@@ -9,11 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Trophy, Search } from 'lucide-react';
 import { getLeaderboard } from '@/data/mockData';
+import { LeaderboardUser } from '@/components/LeaderboardTable';
 
 const LeaderboardPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   
-  const leaderboardUsers = getLeaderboard();
+  // Get the leaderboard data - this already includes rank information
+  const leaderboardUsers = getLeaderboard() as LeaderboardUser[];
   
   // Filter users based on search term
   const filteredUsers = leaderboardUsers.filter(user => 

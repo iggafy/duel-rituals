@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   name: string;
@@ -274,7 +273,7 @@ export const getCompletedDuels = (): Duel[] => {
     });
 };
 
-export const getLeaderboard = (): User[] => {
+export const getLeaderboard = () => {
   return [...mockUsers].sort((a, b) => b.reputation - a.reputation)
     .map((user, index) => ({ ...user, rank: index + 1 }));
 };
