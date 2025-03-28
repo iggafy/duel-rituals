@@ -128,9 +128,7 @@ const Index = () => {
                   id={duel.id}
                   title={duel.title}
                   challenger={duel.challenger}
-                  challengerId={duel.challengerId}
                   opponent={duel.opponent}
-                  opponentId={duel.opponentId}
                   reason={duel.reason}
                   type={duel.type}
                   status={duel.status}

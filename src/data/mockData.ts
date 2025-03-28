@@ -51,6 +51,7 @@ export const duels = [
     opponentId: 'user3',
     opponentAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Thomas',
     createdAt: '2023-11-15T14:30:00Z',
+    startTime: '2023-11-16T10:00:00Z',
     spectatorCount: 57,
     votes: {
       challengerVotes: 24,
@@ -76,6 +77,7 @@ export const duels = [
     opponentId: 'user1',
     opponentAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alexander',
     createdAt: '2023-11-18T09:45:00Z',
+    startTime: '2023-11-20T15:30:00Z',
     spectatorCount: 24,
     votes: {
       challengerVotes: 12,
@@ -98,6 +100,7 @@ export const duels = [
     opponentAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aaron',
     winner: 'Thomas Jefferson',
     createdAt: '2023-11-10T16:20:00Z',
+    startTime: '2023-11-11T09:00:00Z',
     spectatorCount: 42,
     votes: {
       challengerVotes: 28,
@@ -120,6 +123,7 @@ export const duels = [
     challengerId: 'user1',
     challengerAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alexander',
     createdAt: '2023-11-19T11:30:00Z',
+    startTime: '2023-11-22T13:00:00Z',
     spectatorCount: 5,
     votes: {
       challengerVotes: 0,
@@ -135,4 +139,29 @@ export const getDuel = (id: string) => {
 
 export const getUser = (id: string) => {
   return users.find(user => user.id === id);
+};
+
+// Additional helper functions needed by the application
+export const getActiveAndUpcomingDuels = () => {
+  return duels.filter(duel => duel.status === 'active' || duel.status === 'pending');
+};
+
+export const getCompletedDuels = () => {
+  return duels.filter(duel => duel.status === 'completed');
+};
+
+export const getUserDuels = (userId: string) => {
+  return duels.filter(duel => 
+    duel.challengerId === userId || 
+    duel.opponentId === userId
+  );
+};
+
+export const getLeaderboard = () => {
+  return users
+    .map((user, index) => ({
+      ...user,
+      rank: index + 1, // Add rank based on position
+    }))
+    .sort((a, b) => b.reputation - a.reputation); // Sort by reputation descending
 };
