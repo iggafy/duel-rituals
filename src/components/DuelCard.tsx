@@ -4,25 +4,31 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Sword, Users, Clock } from 'lucide-react';
+import { Sword, Users, Clock, Trophy, FireExtinguisher, Brain, ChessKnight } from 'lucide-react';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 interface DuelCardProps {
   id: string;
   title: string;
-  type: string;
-  status: string;
-  challenger: string;
+  type: "intellectual" | "strategic" | "physical";
+  status: "active" | "pending" | "completed" | "declined";
+  challenger: { name: string; avatar?: string };
   challengerId?: string;
-  challengerAvatar?: string;
-  opponent?: string;
+  opponent?: { name: string; avatar?: string };
   opponentId?: string;
-  opponentAvatar?: string;
   reason?: string;
   stakes?: string;
   duration?: number;
   spectatorCount: number;
   startTime?: string;
   createdAt?: string;
+  winner?: string;
 }
 
 const DuelCard: React.FC<DuelCardProps> = ({
@@ -31,13 +37,16 @@ const DuelCard: React.FC<DuelCardProps> = ({
   type,
   status,
   challenger,
-  challengerAvatar,
+  challengerId,
   opponent,
-  opponentAvatar,
+  opponentId,
+  reason,
+  stakes,
   duration = 600, // Default 10 minutes if not provided
   spectatorCount,
   startTime,
-  createdAt
+  createdAt,
+  winner
 }) => {
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -46,17 +55,17 @@ const DuelCard: React.FC<DuelCardProps> = ({
   };
 
   const typeColor = {
-    'intellectual': 'bg-blue-900/50 text-blue-200',
-    'strategic': 'bg-purple-900/50 text-purple-200',
-    'physical': 'bg-red-900/50 text-red-200'
-  }[type] || 'bg-gray-800/50 text-gray-200'; // Default fallback
+    'intellectual': 'bg-blue-900/50 text-blue-200 hover:bg-blue-800/60',
+    'strategic': 'bg-purple-900/50 text-purple-200 hover:bg-purple-800/60',
+    'physical': 'bg-red-900/50 text-red-200 hover:bg-red-800/60'
+  }[type] || 'bg-gray-800/50 text-gray-200 hover:bg-gray-700/60';
 
   const statusColor = {
-    'pending': 'bg-amber-900/50 text-amber-200',
-    'active': 'bg-green-900/50 text-green-200',
-    'completed': 'bg-gray-800/50 text-gray-200',
-    'declined': 'bg-red-900/50 text-red-200'
-  }[status] || 'bg-gray-800/50 text-gray-200'; // Default fallback
+    'pending': 'bg-amber-900/50 text-amber-200 hover:bg-amber-800/60',
+    'active': 'bg-green-900/50 text-green-200 hover:bg-green-800/60',
+    'completed': 'bg-gray-800/50 text-gray-200 hover:bg-gray-700/60',
+    'declined': 'bg-red-900/50 text-red-200 hover:bg-red-800/60'
+  }[status] || 'bg-gray-800/50 text-gray-200 hover:bg-gray-700/60';
 
   // Format date to be more readable
   const formatDate = (dateString: string): string => {
@@ -69,15 +78,59 @@ const DuelCard: React.FC<DuelCardProps> = ({
     }).format(date);
   };
 
+  const getTypeIcon = () => {
+    switch(type) {
+      case 'intellectual':
+        return <Brain className="h-4 w-4 mr-1 text-blue-200" />;
+      case 'strategic':
+        return <ChessKnight className="h-4 w-4 mr-1 text-purple-200" />;
+      case 'physical':
+        return <FireExtinguisher className="h-4 w-4 mr-1 text-red-200" />;
+      default:
+        return <Sword className="h-4 w-4 mr-1 text-duel-gold" />;
+    }
+  };
+
   return (
-    <Card className="ritual-border overflow-hidden hover:bg-accent/5 transition-colors">
+    <Card className="ritual-border overflow-hidden hover:bg-accent/5 transition-colors group">
       <Link to={`/duels/${id}`} className="block h-full">
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start mb-1">
-            <CardTitle className="text-xl text-duel-gold line-clamp-1">{title}</CardTitle>
+            <CardTitle className="text-xl text-duel-gold line-clamp-1 group-hover:text-duel-gold/80 transition-colors">
+              {title}
+            </CardTitle>
             <div className="flex flex-wrap gap-2 ml-2">
-              <Badge className={typeColor}>{type}</Badge>
-              <Badge className={statusColor}>{status}</Badge>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge className={cn("transition-colors cursor-help", typeColor)}>
+                      <span className="flex items-center">
+                        {getTypeIcon()}
+                        {type}
+                      </span>
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p>{type === 'intellectual' ? 'Battle of wits and knowledge' : 
+                       type === 'strategic' ? 'Test of planning and foresight' : 
+                       'Contest of physical skill'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge className={cn("transition-colors cursor-help", statusColor)}>{status}</Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p>{status === 'pending' ? 'Awaiting acceptance' : 
+                       status === 'active' ? 'Currently in progress' : 
+                       status === 'completed' ? 'Duel has concluded' : 
+                       'Challenge was declined'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
           <div className="text-xs text-muted-foreground">
@@ -86,26 +139,42 @@ const DuelCard: React.FC<DuelCardProps> = ({
         </CardHeader>
         
         <CardContent className="pb-2">
-          <div className="flex justify-between items-center mb-4">
+          {reason && (
+            <p className="text-sm text-muted-foreground mb-4 line-clamp-2 italic">
+              "{reason}"
+            </p>
+          )}
+          
+          <div className="flex justify-between items-center">
             <div className="flex items-center">
-              <Avatar className="h-8 w-8 mr-2 border border-duel-gold/40">
-                <AvatarImage src={challengerAvatar} alt={challenger} />
+              <Avatar className="h-8 w-8 mr-2 border border-duel-gold/40 transition-all group-hover:border-duel-gold/60">
+                <AvatarImage src={challenger.avatar} alt={challenger.name} />
                 <AvatarFallback className="bg-duel/50 text-white">
-                  {challenger.charAt(0)}
+                  {challenger.name.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <span className="font-medium">{challenger}</span>
+              <span className="font-medium group-hover:text-duel-gold/80 transition-colors">
+                {challenger.name}
+                {winner === challengerId && (
+                  <Trophy className="h-4 w-4 inline-block ml-1 text-duel-gold" />
+                )}
+              </span>
             </div>
             
-            <div className="text-muted-foreground mx-4">vs</div>
+            <div className="text-muted-foreground mx-4 font-bold">vs</div>
             
             {opponent ? (
               <div className="flex items-center">
-                <span className="font-medium">{opponent}</span>
-                <Avatar className="h-8 w-8 ml-2 border border-duel-gold/40">
-                  <AvatarImage src={opponentAvatar} alt={opponent} />
+                <span className="font-medium group-hover:text-duel-gold/80 transition-colors">
+                  {opponent.name}
+                  {winner === opponentId && (
+                    <Trophy className="h-4 w-4 inline-block ml-1 text-duel-gold" />
+                  )}
+                </span>
+                <Avatar className="h-8 w-8 ml-2 border border-duel-gold/40 transition-all group-hover:border-duel-gold/60">
+                  <AvatarImage src={opponent.avatar} alt={opponent.name} />
                   <AvatarFallback className="bg-duel/50 text-white">
-                    {opponent.charAt(0)}
+                    {opponent.name.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
               </div>
@@ -113,20 +182,28 @@ const DuelCard: React.FC<DuelCardProps> = ({
               <div className="text-muted-foreground italic">Awaiting opponent</div>
             )}
           </div>
+          
+          {stakes && (
+            <div className="mt-3 pt-3 border-t border-duel-gold/10">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-semibold text-duel-gold/90">Stakes:</span> {stakes}
+              </p>
+            </div>
+          )}
         </CardContent>
         
         <CardFooter className="pt-0">
           <div className="w-full flex items-center justify-between text-sm text-muted-foreground">
-            <div className="flex items-center">
+            <div className="flex items-center group-hover:text-foreground/80 transition-colors">
               <Clock className="h-4 w-4 mr-1" />
               <span>{duration ? formatDuration(duration) : 'N/A'}</span>
             </div>
             
             <div className="flex items-center">
-              <Sword className="h-4 w-4 mx-1 text-duel-gold" />
+              <Sword className="h-4 w-4 mx-1 text-duel-gold group-hover:scale-110 transition-transform" />
             </div>
             
-            <div className="flex items-center">
+            <div className="flex items-center group-hover:text-foreground/80 transition-colors">
               <Users className="h-4 w-4 mr-1" />
               <span>{spectatorCount} watching</span>
             </div>
