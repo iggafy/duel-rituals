@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Sword, Users, Clock, Trophy, FireExtinguisher, Brain, ChessKnight } from 'lucide-react';
+import { Sword, Users, Clock, Trophy, FireExtinguisher, Brain } from 'lucide-react';
 import { 
   Tooltip,
   TooltipContent,
@@ -83,7 +83,7 @@ const DuelCard: React.FC<DuelCardProps> = ({
       case 'intellectual':
         return <Brain className="h-4 w-4 mr-1 text-blue-200" />;
       case 'strategic':
-        return <ChessKnight className="h-4 w-4 mr-1 text-purple-200" />;
+        return <Sword className="h-4 w-4 mr-1 text-purple-200" />; // Changed from ChessKnight to Sword for strategic
       case 'physical':
         return <FireExtinguisher className="h-4 w-4 mr-1 text-red-200" />;
       default:

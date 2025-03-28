@@ -102,18 +102,25 @@ const DuelsPage = () => {
                       key={duel.id}
                       id={duel.id}
                       title={duel.title}
-                      challenger={duel.challenger}
-                      challengerAvatar={duel.challengerAvatar}
-                      opponent={duel.opponent}
-                      opponentAvatar={duel.opponentAvatar}
+                      challenger={{ 
+                        name: duel.challenger, 
+                        avatar: duel.challengerAvatar 
+                      }}
+                      challengerId={duel.challengerId}
+                      opponent={duel.opponent ? { 
+                        name: duel.opponent, 
+                        avatar: duel.opponentAvatar 
+                      } : undefined}
+                      opponentId={duel.opponentId}
                       reason={duel.reason}
-                      type={duel.type}
-                      status={duel.status}
+                      type={duel.type as "intellectual" | "strategic" | "physical"}
+                      status={duel.status as "active" | "pending" | "completed" | "declined"}
                       stakes={duel.stakes}
                       spectatorCount={duel.spectatorCount}
                       startTime={duel.startTime}
                       createdAt={duel.createdAt}
                       duration={duel.duration}
+                      winner={duel.winner}
                     />
                   ))}
                 </div>
@@ -132,18 +139,25 @@ const DuelsPage = () => {
                       key={duel.id}
                       id={duel.id}
                       title={duel.title}
-                      challenger={duel.challenger}
-                      challengerAvatar={duel.challengerAvatar}
-                      opponent={duel.opponent}
-                      opponentAvatar={duel.opponentAvatar}
+                      challenger={{ 
+                        name: duel.challenger, 
+                        avatar: duel.challengerAvatar 
+                      }}
+                      challengerId={duel.challengerId}
+                      opponent={duel.opponent ? { 
+                        name: duel.opponent, 
+                        avatar: duel.opponentAvatar 
+                      } : undefined}
+                      opponentId={duel.opponentId}
                       reason={duel.reason}
-                      type={duel.type}
-                      status={duel.status}
+                      type={duel.type as "intellectual" | "strategic" | "physical"}
+                      status={duel.status as "active" | "pending" | "completed" | "declined"}
                       stakes={duel.stakes}
                       spectatorCount={duel.spectatorCount}
                       startTime={duel.startTime}
                       createdAt={duel.createdAt}
                       duration={duel.duration}
+                      winner={duel.winner}
                     />
                   ))}
                 </div>
