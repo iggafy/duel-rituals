@@ -1,53 +1,238 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
-import { Progress } from '@/components/ui/progress';
-import DuelTimer from '@/components/DuelTimer';
+import { useParams } from 'react-router-dom';
 import NavigationBar from '@/components/NavigationBar';
 import Footer from '@/components/Footer';
-import { getDuel, getUser } from '@/data/mockData';
-import { toast } from '@/components/ui/use-toast';
-import { Sword, Trophy, Clock, Users, Heart, MessageSquare } from 'lucide-react';
+import DuelTimer from '@/components/DuelTimer';
+import DuelActions from '@/components/DuelActions';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Shield, 
+  Sword, 
+  Trophy,
+  Calendar,
+  Clock,
+  AlertCircle,
+  Users,
+  Brain,
+  FireExtinguisher
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+
+interface Profile {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+}
+
+interface Duel {
+  id: string;
+  title: string;
+  reason: string;
+  stakes: string;
+  status: 'pending' | 'active' | 'completed' | 'declined';
+  type: 'intellectual' | 'strategic' | 'physical';
+  challenger_id: string;
+  opponent_id: string | null;
+  winner_id: string | null;
+  duration: number;
+  start_time: string | null;
+  end_time: string | null;
+  created_at: string;
+}
 
 const DuelDetailPage = () => {
   const { id } = useParams<{ id: string }>();
-  const duel = id ? getDuel(id) : undefined;
-  
-  const [userVote, setUserVote] = useState<'challenger' | 'opponent' | null>(null);
-  const [challengerVotes, setChallengerVotes] = useState(duel?.votes?.challengerVotes || 0);
-  const [opponentVotes, setOpponentVotes] = useState(duel?.votes?.opponentVotes || 0);
-  const [duelStatus, setDuelStatus] = useState(duel?.status || 'pending');
+  const { user } = useAuth();
+  const [duel, setDuel] = useState<Duel | null>(null);
+  const [challenger, setChallenger] = useState<Profile | null>(null);
+  const [opponent, setOpponent] = useState<Profile | null>(null);
+  const [winner, setWinner] = useState<Profile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [spectatorCount, setSpectatorCount] = useState(0);
   const [isSpectating, setIsSpectating] = useState(false);
-  
-  const challenger = duel?.challengerId ? getUser(duel.challengerId) : undefined;
-  const opponent = duel?.opponentId ? getUser(duel.opponentId) : undefined;
-  
-  const totalVotes = challengerVotes + opponentVotes;
-  const challengerVotePercentage = totalVotes > 0 ? (challengerVotes / totalVotes) * 100 : 0;
-  
-  useEffect(() => {
-    if (duel) {
-      setChallengerVotes(duel.votes?.challengerVotes || 0);
-      setOpponentVotes(duel.votes?.opponentVotes || 0);
-      setDuelStatus(duel.status);
-    }
-  }, [duel]);
 
-  if (!duel) {
+  const fetchDuel = async () => {
+    if (!id) return;
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const { data, error } = await supabase
+        .from('duels')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      if (!data) throw new Error('Duel not found');
+
+      setDuel(data as Duel);
+
+      // Fetch challenger profile
+      const { data: challengerData, error: challengerError } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .eq('id', data.challenger_id)
+        .single();
+
+      if (challengerError) console.error('Error fetching challenger:', challengerError);
+      else setChallenger(challengerData as Profile);
+
+      // Fetch opponent profile if exists
+      if (data.opponent_id) {
+        const { data: opponentData, error: opponentError } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url')
+          .eq('id', data.opponent_id)
+          .single();
+
+        if (opponentError) console.error('Error fetching opponent:', opponentError);
+        else setOpponent(opponentData as Profile);
+      }
+
+      // Fetch winner profile if exists
+      if (data.winner_id) {
+        const { data: winnerData, error: winnerError } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url')
+          .eq('id', data.winner_id)
+          .single();
+
+        if (winnerError) console.error('Error fetching winner:', winnerError);
+        else setWinner(winnerData as Profile);
+      }
+
+      // Fetch spectator count
+      const { count, error: spectatorError } = await supabase
+        .from('duel_spectators')
+        .select('id', { count: 'exact' })
+        .eq('duel_id', id);
+
+      if (!spectatorError && count !== null) {
+        setSpectatorCount(count);
+      }
+
+      // Check if user is spectating
+      if (user) {
+        const { data: spectatorData, error: userSpectatorError } = await supabase
+          .from('duel_spectators')
+          .select('id')
+          .eq('duel_id', id)
+          .eq('user_id', user.id);
+
+        if (!userSpectatorError && spectatorData && spectatorData.length > 0) {
+          setIsSpectating(true);
+        }
+      }
+
+    } catch (err) {
+      console.error('Error fetching duel details:', err);
+      setError('Failed to load duel details');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSpectate = async () => {
+    if (!user || !duel || isSpectating) return;
+
+    try {
+      // Add user as spectator
+      await supabase
+        .from('duel_spectators')
+        .insert({
+          duel_id: duel.id,
+          user_id: user.id
+        });
+
+      setIsSpectating(true);
+      setSpectatorCount(prev => prev + 1);
+    } catch (err) {
+      console.error('Error adding spectator:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchDuel();
+  }, [id, user]);
+
+  const isChallenger = user && duel?.challenger_id === user.id;
+  const isOpponent = user && duel?.opponent_id === user.id;
+  
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Not set';
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
+  };
+
+  const getTypeIcon = (type: 'intellectual' | 'strategic' | 'physical') => {
+    switch(type) {
+      case 'intellectual':
+        return <Brain className="h-5 w-5 mr-2 text-blue-200" />;
+      case 'strategic':
+        return <Sword className="h-5 w-5 mr-2 text-purple-200" />;
+      case 'physical':
+        return <FireExtinguisher className="h-5 w-5 mr-2 text-red-200" />;
+      default:
+        return <Sword className="h-5 w-5 mr-2 text-duel-gold" />;
+    }
+  };
+
+  const getTypeClass = (type: 'intellectual' | 'strategic' | 'physical') => {
+    return {
+      'intellectual': 'bg-blue-900/50 text-blue-200 hover:bg-blue-800/60',
+      'strategic': 'bg-purple-900/50 text-purple-200 hover:bg-purple-800/60',
+      'physical': 'bg-red-900/50 text-red-200 hover:bg-red-800/60'
+    }[type] || 'bg-gray-800/50 text-gray-200 hover:bg-gray-700/60';
+  };
+
+  const getStatusClass = (status: 'pending' | 'active' | 'completed' | 'declined') => {
+    return {
+      'pending': 'bg-amber-900/50 text-amber-200 hover:bg-amber-800/60',
+      'active': 'bg-green-900/50 text-green-200 hover:bg-green-800/60',
+      'completed': 'bg-gray-800/50 text-gray-200 hover:bg-gray-700/60',
+      'declined': 'bg-red-900/50 text-red-200 hover:bg-red-800/60'
+    }[status] || 'bg-gray-800/50 text-gray-200 hover:bg-gray-700/60';
+  };
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <NavigationBar />
-        <main className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold mb-4">Duel Not Found</h1>
-            <p className="text-muted-foreground mb-6">The duel you are looking for does not exist.</p>
+        <main className="flex-1 container py-12">
+          <p className="text-center text-muted-foreground">Loading duel details...</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error || !duel) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <NavigationBar />
+        <main className="flex-1 container py-12">
+          <div className="max-w-3xl mx-auto text-center">
+            <AlertCircle className="mx-auto h-12 w-12 text-red-500 mb-4" />
+            <h1 className="text-2xl font-bold mb-4">Error Loading Duel</h1>
+            <p className="text-muted-foreground mb-6">{error || 'Duel not found'}</p>
             <Button asChild>
-              <Link to="/duels">View All Duels</Link>
+              <Link to="/duels">Return to Duels</Link>
             </Button>
           </div>
         </main>
@@ -55,374 +240,196 @@ const DuelDetailPage = () => {
       </div>
     );
   }
-  
-  const handleVote = (vote: 'challenger' | 'opponent') => {
-    if (duelStatus !== 'active') {
-      toast({
-        title: "Voting not available",
-        description: duelStatus === 'pending' 
-          ? "This duel has not started yet."
-          : "This duel has already concluded.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (userVote === vote) {
-      toast({
-        title: "Already voted",
-        description: "You have already cast your vote for this participant.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // If changing vote, subtract from previous choice
-    if (userVote) {
-      if (userVote === 'challenger') {
-        setChallengerVotes(prev => prev - 1);
-      } else {
-        setOpponentVotes(prev => prev - 1);
-      }
-    }
-    
-    // Add vote to chosen participant
-    if (vote === 'challenger') {
-      setChallengerVotes(prev => prev + 1);
-    } else {
-      setOpponentVotes(prev => prev + 1);
-    }
-    
-    setUserVote(vote);
-    
-    toast({
-      title: "Vote cast",
-      description: `You have voted for ${vote === 'challenger' ? duel.challenger : duel.opponent}.`,
-    });
-  };
-  
-  const handleSpectate = () => {
-    setIsSpectating(!isSpectating);
-    
-    if (!isSpectating) {
-      toast({
-        title: "Now spectating",
-        description: "You are now spectating this duel. You'll receive notifications of significant events.",
-      });
-    } else {
-      toast({
-        title: "Stopped spectating",
-        description: "You are no longer spectating this duel.",
-      });
-    }
-  };
-  
-  const handleTimerComplete = () => {
-    if (duelStatus === 'active') {
-      setDuelStatus('completed');
-      
-      // Determine winner
-      const winner = challengerVotes > opponentVotes ? duel.challenger : duel.opponent;
-      
-      toast({
-        title: "Duel Concluded",
-        description: `The duel has ended. ${winner} has emerged victorious!`,
-      });
-    }
-  };
-  
-  // Get type color for badge
-  const duelTypeColors = {
-    intellectual: 'bg-blue-900/50 text-blue-200',
-    strategic: 'bg-purple-900/50 text-purple-200',
-    physical: 'bg-red-900/50 text-red-200'
-  };
 
-  // Get status color for badge
-  const statusColors = {
-    pending: 'bg-amber-900/50 text-amber-200',
-    active: 'bg-green-900/50 text-green-200',
-    completed: 'bg-gray-800/50 text-gray-200'
-  };
-  
   return (
     <div className="min-h-screen flex flex-col">
       <NavigationBar />
       
-      <main className="flex-1 py-8">
-        <div className="container">
+      <main className="flex-1 container py-8">
+        <div className="max-w-4xl mx-auto">
           <div className="mb-6">
-            <Link to="/duels" className="text-duel-gold hover:underline">
-              &larr; Back to Duels
-            </Link>
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Duel Info Column */}
-            <div className="lg:col-span-2">
-              <Card className="ritual-border">
-                <CardHeader>
-                  <div className="flex flex-wrap justify-between items-start gap-3 mb-2">
-                    <div>
-                      <CardTitle className="text-2xl text-duel-gold mb-1">{duel.title}</CardTitle>
-                      <CardDescription>Created on {duel.createdAt}</CardDescription>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge className={duelTypeColors[duel.type]}>{duel.type}</Badge>
-                      <Badge className={statusColors[duelStatus]}>{duelStatus}</Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div>
-                    <h3 className="font-semibold mb-2">Reason for Duel</h3>
-                    <p className="text-muted-foreground">{duel.reason}</p>
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-semibold mb-2">Stakes</h3>
-                    <p className="text-muted-foreground">{duel.stakes}</p>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <DuelTimer 
-                    duration={duel.duration} 
-                    status={duelStatus as 'pending' | 'active' | 'completed'} 
-                    onComplete={handleTimerComplete}
-                  />
-                  
-                  <div className="pt-2">
-                    <h3 className="font-semibold mb-4">Arguments</h3>
-                    
-                    <div className="space-y-6">
-                      <div className="p-4 bg-secondary rounded-md">
-                        <div className="flex items-center mb-2">
-                          <Avatar className="h-8 w-8 mr-2 border border-duel-gold/40">
-                            <AvatarImage src={duel.challengerAvatar} alt={duel.challenger} />
-                            <AvatarFallback className="bg-duel/50 text-white">
-                              {duel.challenger.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">{duel.challenger}'s Position</span>
-                        </div>
-                        <p className="text-foreground/90">
-                          {duel.arguments?.challenger || "This participant has not stated their argument yet."}
-                        </p>
-                      </div>
-                      
-                      <div className="p-4 bg-secondary rounded-md">
-                        <div className="flex items-center mb-2">
-                          <Avatar className="h-8 w-8 mr-2 border border-duel-gold/40">
-                            <AvatarImage src={duel.opponentAvatar} alt={duel.opponent || "Opponent"} />
-                            <AvatarFallback className="bg-duel/50 text-white">
-                              {duel.opponent ? duel.opponent.charAt(0) : "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">
-                            {duel.opponent 
-                              ? `${duel.opponent}'s Position` 
-                              : "Awaiting Opponent"}
-                          </span>
-                        </div>
-                        <p className="text-foreground/90">
-                          {duel.arguments?.opponent || "This participant has not stated their argument yet."}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {duelStatus === 'completed' && duel.winner && (
-                    <div className="py-4">
-                      <h3 className="font-semibold mb-3">Outcome</h3>
-                      <div className="p-4 bg-duel/20 border border-duel-gold/30 rounded-md">
-                        <div className="flex items-center">
-                          <Trophy className="h-5 w-5 text-duel-gold mr-2" />
-                          <span className="font-medium text-duel-gold">
-                            {duel.winner} has emerged victorious in this duel.
-                          </span>
-                        </div>
-                        <p className="mt-2 text-muted-foreground">
-                          The community has determined the outcome through their votes. This result is now recorded in both participants' histories.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+            <h1 className="text-3xl font-bold text-duel-gold mb-2">{duel.title}</h1>
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Badge className={cn("transition-colors", getTypeClass(duel.type))}>
+                <span className="flex items-center">
+                  {getTypeIcon(duel.type)}
+                  {duel.type}
+                </span>
+              </Badge>
+              <Badge className={cn("transition-colors", getStatusClass(duel.status))}>
+                {duel.status}
+              </Badge>
             </div>
             
-            {/* Participants and Voting Column */}
-            <div>
-              <div className="space-y-6">
-                {/* Participants */}
-                <Card className="ritual-border">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Duelists</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground mb-2">Challenger</h4>
-                      <div className="flex items-center">
+            <div className="flex items-center text-sm text-muted-foreground mb-6">
+              <Calendar className="h-4 w-4 mr-1" />
+              <span className="mr-4">Created: {formatDate(duel.created_at)}</span>
+              
+              {duel.start_time && (
+                <>
+                  <Clock className="h-4 w-4 mr-1 ml-4" />
+                  <span>Started: {formatDate(duel.start_time)}</span>
+                </>
+              )}
+            </div>
+            
+            {duel.reason && (
+              <div className="bg-accent/30 p-4 rounded-md mb-6 border border-accent/10">
+                <p className="text-lg italic text-foreground/80">"{duel.reason}"</p>
+              </div>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <Card className="ritual-border col-span-1 md:col-span-2">
+              <CardContent className="pt-6">
+                <div className="flex flex-col space-y-6">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      <Shield className="h-5 w-5 mr-2 text-duel-gold" />
+                      <h2 className="text-xl font-semibold">Participants</h2>
+                    </div>
+                    
+                    {!isChallenger && !isOpponent && user && !isSpectating && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="border-duel-gold/40 text-duel-gold hover:bg-duel-gold/10"
+                        onClick={handleSpectate}
+                      >
+                        <Users className="h-4 w-4 mr-1" />
+                        Spectate
+                      </Button>
+                    )}
+                    
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Users className="h-4 w-4 mr-1" />
+                      <span>{spectatorCount} spectating</span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className={`p-4 rounded-md ${winner?.id === challenger?.id ? 'bg-duel-gold/10 border border-duel-gold/30' : 'bg-accent/20'}`}>
+                      <div className="flex items-center mb-3">
                         <Avatar className="h-10 w-10 mr-3 border border-duel-gold/40">
-                          <AvatarImage src={duel.challengerAvatar} alt={duel.challenger} />
+                          <AvatarImage src={challenger?.avatar_url || undefined} alt={challenger?.username} />
                           <AvatarFallback className="bg-duel/50 text-white">
-                            {duel.challenger.charAt(0)}
+                            {challenger?.username.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <Link 
-                            to={`/profile/${duel.challengerId}`} 
-                            className="font-semibold hover:text-duel-gold hover:underline"
-                          >
-                            {duel.challenger}
-                          </Link>
-                          {challenger && 
-                            <div className="text-xs text-muted-foreground">
-                              Reputation: {challenger.reputation}
-                            </div>
-                          }
+                          <div className="flex items-center">
+                            <Link 
+                              to={`/profile/${challenger?.id}`}
+                              className="font-medium text-lg hover:text-duel-gold transition-colors"
+                            >
+                              {challenger?.username}
+                            </Link>
+                            {winner?.id === challenger?.id && (
+                              <Trophy className="h-5 w-5 ml-2 text-duel-gold" />
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Challenger</div>
                         </div>
                       </div>
                     </div>
                     
-                    <Separator />
-                    
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground mb-2">Opponent</h4>
-                      {duel.opponent ? (
-                        <div className="flex items-center">
+                    <div className={`p-4 rounded-md ${winner?.id === opponent?.id ? 'bg-duel-gold/10 border border-duel-gold/30' : 'bg-accent/20'}`}>
+                      {opponent ? (
+                        <div className="flex items-center mb-3">
                           <Avatar className="h-10 w-10 mr-3 border border-duel-gold/40">
-                            <AvatarImage src={duel.opponentAvatar} alt={duel.opponent} />
+                            <AvatarImage src={opponent?.avatar_url || undefined} alt={opponent?.username} />
                             <AvatarFallback className="bg-duel/50 text-white">
-                              {duel.opponent.charAt(0)}
+                              {opponent?.username.charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <Link 
-                              to={`/profile/${duel.opponentId}`} 
-                              className="font-semibold hover:text-duel-gold hover:underline"
-                            >
-                              {duel.opponent}
-                            </Link>
-                            {opponent && 
-                              <div className="text-xs text-muted-foreground">
-                                Reputation: {opponent.reputation}
-                              </div>
-                            }
+                            <div className="flex items-center">
+                              <Link 
+                                to={`/profile/${opponent?.id}`}
+                                className="font-medium text-lg hover:text-duel-gold transition-colors"
+                              >
+                                {opponent?.username}
+                              </Link>
+                              {winner?.id === opponent?.id && (
+                                <Trophy className="h-5 w-5 ml-2 text-duel-gold" />
+                              )}
+                            </div>
+                            <div className="text-sm text-muted-foreground">Opponent</div>
                           </div>
                         </div>
                       ) : (
-                        <div className="p-3 bg-muted rounded-md text-center">
-                          <span className="text-muted-foreground">Awaiting challenger response...</span>
+                        <div className="flex items-center justify-center h-full">
+                          <p className="text-muted-foreground italic">Awaiting opponent</p>
                         </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  
+                  {duel.stakes && (
+                    <div className="mt-4 pt-4 border-t border-duel-gold/10">
+                      <h3 className="text-lg font-semibold mb-2 flex items-center">
+                        <Sword className="h-5 w-5 mr-2 text-duel-gold" />
+                        Stakes
+                      </h3>
+                      <p className="text-foreground/80">{duel.stakes}</p>
+                    </div>
+                  )}
+                  
+                  {(isChallenger || isOpponent) && (
+                    <DuelActions 
+                      duelId={duel.id}
+                      duelStatus={duel.status}
+                      isChallenger={isChallenger}
+                      isOpponent={isOpponent}
+                      opponentId={duel.opponent_id}
+                      onStatusUpdate={fetchDuel}
+                    />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="ritual-border">
+              <CardContent className="pt-6">
+                <h2 className="text-xl font-semibold mb-4">Duel Status</h2>
+                <DuelTimer 
+                  duration={duel.duration} 
+                  status={duel.status}
+                  onComplete={() => {
+                    if (duel.status === 'active') {
+                      fetchDuel();
+                    }
+                  }}
+                />
                 
-                {/* Voting */}
-                <Card className="ritual-border">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Cast Your Vote</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>{duel.challenger}</span>
-                          <span>{challengerVotes} votes</span>
-                        </div>
-                        <Progress value={challengerVotePercentage} className="h-2" />
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>{duel.opponent || "Opponent"}</span>
-                          <span>{opponentVotes} votes</span>
-                        </div>
-                        <Progress value={100 - challengerVotePercentage} className="h-2" />
-                      </div>
+                <div className="mt-6 pt-6 border-t border-duel-gold/10">
+                  <h3 className="text-lg font-semibold mb-3">Timeline</h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Challenge issued:</span>
+                      <span>{formatDate(duel.created_at)}</span>
                     </div>
                     
-                    <div className="flex gap-3">
-                      <Button 
-                        variant={userVote === 'challenger' ? 'default' : 'outline'}
-                        className={userVote === 'challenger' ? 'bg-duel text-white' : 'border-duel/50 text-foreground'}
-                        onClick={() => handleVote('challenger')}
-                        disabled={duelStatus !== 'active'}
-                        size="sm"
-                      >
-                        Vote for {duel.challenger}
-                      </Button>
-                      <Button 
-                        variant={userVote === 'opponent' ? 'default' : 'outline'}
-                        className={userVote === 'opponent' ? 'bg-duel text-white' : 'border-duel/50 text-foreground'}
-                        onClick={() => handleVote('opponent')}
-                        disabled={duelStatus !== 'active' || !duel.opponent}
-                        size="sm"
-                      >
-                        Vote for {duel.opponent || "Opponent"}
-                      </Button>
-                    </div>
-                    
-                    {duelStatus !== 'active' && (
-                      <p className="text-xs text-muted-foreground text-center">
-                        {duelStatus === 'pending' 
-                          ? "Voting will be available once the duel begins."
-                          : "Voting has concluded for this duel."}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-                
-                {/* Spectator Actions */}
-                <Card className="ritual-border">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Spectator Actions</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="flex items-center">
-                          <Users className="h-4 w-4 mr-1" />
-                          <span>{duel.spectatorCount} spectators</span>
+                    {duel.status !== 'pending' && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          {duel.status === 'declined' ? 'Challenge declined:' : 'Duel started:'}
                         </span>
-                        <Button 
-                          variant={isSpectating ? "default" : "outline"}
-                          className={isSpectating 
-                            ? "bg-duel text-white h-8" 
-                            : "border-duel/50 text-foreground h-8"}
-                          size="sm"
-                          onClick={handleSpectate}
-                        >
-                          {isSpectating ? "Spectating" : "Spectate"}
-                        </Button>
+                        <span>{formatDate(duel.start_time)}</span>
                       </div>
-                      
-                      <div className="grid grid-cols-2 gap-2 pt-2">
-                        <Button 
-                          variant="outline" 
-                          className="h-9 border-muted-foreground/30"
-                          size="sm"
-                        >
-                          <Heart className="h-4 w-4 mr-1" />
-                          <span className="text-xs">Support</span>
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          className="h-9 border-muted-foreground/30"
-                          size="sm"
-                        >
-                          <MessageSquare className="h-4 w-4 mr-1" />
-                          <span className="text-xs">Comment</span>
-                        </Button>
+                    )}
+                    
+                    {duel.status === 'completed' && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Duel completed:</span>
+                        <span>{formatDate(duel.end_time)}</span>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>

@@ -23,7 +23,7 @@ type AuthContextType = {
   profile: Profile | null;
   isLoading: boolean;
   signUp: (email: string, password: string, username: string) => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string, redirectTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
@@ -37,11 +37,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
+        console.log('Auth state changed:', event);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -52,6 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }, 0);
         } else {
           setProfile(null);
+          setIsLoading(false);
         }
       }
     );
@@ -141,7 +144,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, redirectTo?: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -161,6 +164,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         title: 'Welcome Back',
         description: 'You have successfully signed in.',
       });
+
+      // Redirect if specified
+      if (redirectTo) {
+        navigate(redirectTo);
+      }
     } catch (error: any) {
       console.error('Sign in error:', error);
       throw error;
@@ -184,6 +192,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         title: 'Signed Out',
         description: 'You have been successfully signed out.',
       });
+      
+      // Navigate to home page after signout
+      navigate('/');
     } catch (error: any) {
       console.error('Sign out error:', error);
       throw error;
