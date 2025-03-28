@@ -9,7 +9,236 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      duel_comments: {
+        Row: {
+          content: string
+          created_at: string
+          duel_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          duel_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          duel_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "duel_comments_duel_id_fkey"
+            columns: ["duel_id"]
+            isOneToOne: false
+            referencedRelation: "duels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duel_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      duel_spectators: {
+        Row: {
+          duel_id: string
+          id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          duel_id: string
+          id?: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          duel_id?: string
+          id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "duel_spectators_duel_id_fkey"
+            columns: ["duel_id"]
+            isOneToOne: false
+            referencedRelation: "duels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duel_spectators_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      duel_votes: {
+        Row: {
+          created_at: string
+          duel_id: string
+          id: string
+          vote_for_id: string
+          voter_id: string
+        }
+        Insert: {
+          created_at?: string
+          duel_id: string
+          id?: string
+          vote_for_id: string
+          voter_id: string
+        }
+        Update: {
+          created_at?: string
+          duel_id?: string
+          id?: string
+          vote_for_id?: string
+          voter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "duel_votes_duel_id_fkey"
+            columns: ["duel_id"]
+            isOneToOne: false
+            referencedRelation: "duels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duel_votes_vote_for_id_fkey"
+            columns: ["vote_for_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duel_votes_voter_id_fkey"
+            columns: ["voter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      duels: {
+        Row: {
+          challenger_id: string
+          created_at: string
+          duration: number
+          end_time: string | null
+          id: string
+          opponent_id: string | null
+          reason: string
+          stakes: string
+          start_time: string | null
+          status: string
+          title: string
+          type: string
+          updated_at: string
+          winner_id: string | null
+        }
+        Insert: {
+          challenger_id: string
+          created_at?: string
+          duration: number
+          end_time?: string | null
+          id?: string
+          opponent_id?: string | null
+          reason: string
+          stakes: string
+          start_time?: string | null
+          status: string
+          title: string
+          type: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Update: {
+          challenger_id?: string
+          created_at?: string
+          duration?: number
+          end_time?: string | null
+          id?: string
+          opponent_id?: string | null
+          reason?: string
+          stakes?: string
+          start_time?: string | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "duels_challenger_id_fkey"
+            columns: ["challenger_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duels_opponent_id_fkey"
+            columns: ["opponent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duels_winner_id_fkey"
+            columns: ["winner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          duels_lost: number | null
+          duels_participated: number | null
+          duels_won: number | null
+          id: string
+          reputation: number | null
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          duels_lost?: number | null
+          duels_participated?: number | null
+          duels_won?: number | null
+          id: string
+          reputation?: number | null
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          duels_lost?: number | null
+          duels_participated?: number | null
+          duels_won?: number | null
+          id?: string
+          reputation?: number | null
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

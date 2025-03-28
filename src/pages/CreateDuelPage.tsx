@@ -13,8 +13,14 @@ import { toast } from '@/components/ui/use-toast';
 import NavigationBar from '@/components/NavigationBar';
 import Footer from '@/components/Footer';
 import { Sword, Info } from 'lucide-react';
+import { useAuthGuard } from '@/hooks/use-auth-guard';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const CreateDuelPage = () => {
+  // Auth guard will redirect if not authenticated
+  const { isAuthenticated, isLoading } = useAuthGuard();
+  const { user } = useAuth();
   const navigate = useNavigate();
   
   const [title, setTitle] = useState('');
@@ -55,7 +61,7 @@ const CreateDuelPage = () => {
     setCurrentStep(currentStep - 1);
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate final step
@@ -68,15 +74,64 @@ const CreateDuelPage = () => {
       return;
     }
     
-    // In a real app, we would create the duel in the database here
-    
-    toast({
-      title: "Duel Created",
-      description: "Your duel invitation has been sent to the opponent.",
-    });
-    
-    // Navigate to duels page
-    navigate('/duels');
+    try {
+      // Find opponent by username
+      const { data: opponentData, error: opponentError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', opponent)
+        .single();
+        
+      if (opponentError || !opponentData) {
+        toast({
+          title: "Opponent Not Found",
+          description: "The username you entered doesn't exist.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Create duel
+      const { data, error } = await supabase
+        .from('duels')
+        .insert({
+          title,
+          reason,
+          stakes,
+          type,
+          status: 'pending',
+          duration,
+          challenger_id: user?.id,
+          opponent_id: opponentData.id,
+        })
+        .select()
+        .single();
+        
+      if (error) {
+        console.error('Error creating duel:', error);
+        toast({
+          title: "Error",
+          description: "There was an error creating the duel. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      toast({
+        title: "Duel Created",
+        description: "Your duel invitation has been sent to the opponent.",
+      });
+      
+      // Navigate to duels page
+      navigate('/duels');
+    } catch (error) {
+      console.error('Error in duel creation:', error);
+      toast({
+        title: "Error",
+        description: "There was an error creating the duel. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   const getFormProgress = () => {
@@ -88,6 +143,13 @@ const CreateDuelPage = () => {
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+  
+  // Show loading or nothing if not authenticated
+  if (isLoading || !isAuthenticated) {
+    return <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-duel"></div>
+    </div>;
+  }
   
   return (
     <div className="min-h-screen flex flex-col">
