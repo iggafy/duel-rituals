@@ -3,15 +3,29 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { useNavigate } from 'react-router-dom';
+
+export type Profile = {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  reputation: number | null;
+  duels_won: number | null;
+  duels_lost: number | null;
+  duels_participated: number | null;
+  created_at: string;
+  updated_at: string;
+};
 
 type AuthContextType = {
   session: Session | null;
   user: User | null;
-  profile: any | null; // Profile type to be expanded as needed
+  profile: Profile | null;
   isLoading: boolean;
   signUp: (email: string, password: string, username: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -21,7 +35,7 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -49,9 +63,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (session?.user) {
         fetchProfile(session.user.id);
+      } else {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     });
 
     return () => {
@@ -70,10 +84,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (error) {
         console.error('Error fetching profile:', error);
       } else {
-        setProfile(data);
+        setProfile(data as Profile);
       }
+      
+      setIsLoading(false);
     } catch (error) {
       console.error('Error in fetchProfile:', error);
+      setIsLoading(false);
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (!user) return;
+    
+    try {
+      setIsLoading(true);
+      await fetchProfile(user.id);
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
     }
   };
 
@@ -100,7 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       toast({
         title: 'Account Created',
-        description: 'Your account has been created successfully!',
+        description: 'Please check your email to verify your account.',
       });
       
       // Fetch profile after signup
@@ -172,6 +200,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signUp,
         signIn,
         signOut,
+        refreshProfile,
       }}
     >
       {children}

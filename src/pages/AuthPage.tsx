@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,9 +40,12 @@ const AuthPage = () => {
     location.pathname === '/auth/signup' ? 'signup' : 'login'
   );
 
+  // Get the path to redirect to after login
+  const from = location.state?.from || '/';
+
   // Redirect if already logged in
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={from} replace />;
   }
 
   const loginForm = useForm<LoginFormValues>({
@@ -68,7 +70,7 @@ const AuthPage = () => {
     setIsLoading(true);
     try {
       await signIn(values.email, values.password);
-      navigate('/');
+      navigate(from);
     } catch (error) {
       console.error('Login error:', error);
     } finally {
@@ -102,6 +104,11 @@ const AuthPage = () => {
           </div>
           <h1 className="text-3xl font-bold text-duel-gold">DuelOn</h1>
           <p className="mt-2 text-foreground/80">Sign in or create an account to begin dueling</p>
+          {from !== '/' && (
+            <p className="mt-2 text-duel-gold text-sm">
+              You'll be redirected back to where you were after signing in
+            </p>
+          )}
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
