@@ -1,7 +1,7 @@
 
-import React, { useEffect, useState } from 'react';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useEffect } from 'react';
+import { Card } from '@/components/ui/card';
+import { Clock } from 'lucide-react';
 
 interface DuelTimerProps {
   duration: number; // in seconds
@@ -9,31 +9,27 @@ interface DuelTimerProps {
   onComplete?: () => void;
 }
 
-const DuelTimer: React.FC<DuelTimerProps> = ({ 
-  duration, 
-  status,
-  onComplete 
-}) => {
-  const [timeLeft, setTimeLeft] = useState(duration);
-  const [isRunning, setIsRunning] = useState(status === 'active');
+const DuelTimer: React.FC<DuelTimerProps> = ({ duration, status, onComplete }) => {
+  const [timeLeft, setTimeLeft] = useState<number>(duration);
+  const [isRunning, setIsRunning] = useState<boolean>(status === 'active');
   
   useEffect(() => {
     setIsRunning(status === 'active');
-    
     if (status === 'active') {
       setTimeLeft(duration);
     }
   }, [status, duration]);
   
   useEffect(() => {
-    let timer: number;
+    let timer: NodeJS.Timeout;
     
     if (isRunning && timeLeft > 0) {
-      timer = window.setTimeout(() => {
+      timer = setInterval(() => {
         setTimeLeft(prevTime => {
           if (prevTime <= 1) {
+            clearInterval(timer);
             setIsRunning(false);
-            if (onComplete) onComplete();
+            onComplete && onComplete();
             return 0;
           }
           return prevTime - 1;
@@ -42,7 +38,7 @@ const DuelTimer: React.FC<DuelTimerProps> = ({
     }
     
     return () => {
-      if (timer) clearTimeout(timer);
+      if (timer) clearInterval(timer);
     };
   }, [isRunning, timeLeft, onComplete]);
   
@@ -52,44 +48,49 @@ const DuelTimer: React.FC<DuelTimerProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
   
-  const progressValue = ((duration - timeLeft) / duration) * 100;
+  const getStatusText = (): string => {
+    switch (status) {
+      case 'pending':
+        return 'Waiting for duel to begin';
+      case 'active':
+        return 'Duel in progress';
+      case 'completed':
+        return 'Duel has concluded';
+      default:
+        return '';
+    }
+  };
+  
+  const getStatusColor = (): string => {
+    switch (status) {
+      case 'pending':
+        return 'text-amber-500';
+      case 'active':
+        return 'text-green-500';
+      case 'completed':
+        return 'text-gray-500';
+      default:
+        return '';
+    }
+  };
   
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <span className="text-sm font-medium">Duel Timer</span>
-        <div className="flex items-center space-x-2">
-          {status === 'pending' && (
-            <Badge variant="outline" className="bg-amber-900/30 text-amber-200 border-amber-500/50">
-              Awaiting Start
-            </Badge>
-          )}
-          {status === 'active' && (
-            <Badge variant="outline" className="bg-green-900/30 text-green-200 border-green-500/50 animate-pulse-subtle">
-              In Progress
-            </Badge>
-          )}
-          {status === 'completed' && (
-            <Badge variant="outline" className="bg-gray-800/30 text-gray-200 border-gray-500/50">
-              Completed
-            </Badge>
-          )}
-          <span className="font-mono text-lg">
-            {formatTime(timeLeft)}
-          </span>
+    <div className="pt-2">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center">
+          <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
+          <h3 className="text-sm font-medium">Duration</h3>
+        </div>
+        <div className={`text-sm font-medium ${getStatusColor()}`}>
+          {getStatusText()}
         </div>
       </div>
-      <Progress 
-        value={progressValue} 
-        className="h-2 bg-secondary"
-        indicatorClassName={
-          status === 'completed' 
-            ? "bg-muted-foreground" 
-            : timeLeft < 30 
-              ? "bg-duel-red" 
-              : "bg-duel"
-        }
-      />
+      
+      <Card className={`p-4 flex justify-center items-center ${status === 'completed' ? 'bg-muted' : ''}`}>
+        <div className={`font-mono text-3xl ${status === 'active' ? 'text-duel-gold' : ''}`}>
+          {formatTime(timeLeft)}
+        </div>
+      </Card>
     </div>
   );
 };

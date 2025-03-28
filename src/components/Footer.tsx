@@ -5,32 +5,75 @@ import { Sword } from 'lucide-react';
 
 const Footer = () => {
   return (
-    <footer className="border-t border-duel-gold/20 bg-duel-dark py-8 mt-12">
-      <div className="container mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-center">
-          <div className="flex items-center mb-4 md:mb-0">
-            <Sword className="text-duel-gold h-6 w-6 mr-2" />
-            <span className="text-xl font-semibold text-duel-gold">DuelOn</span>
+    <footer className="border-t border-duel-gold/20 bg-duel-dark py-8">
+      <div className="container">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="md:col-span-2">
+            <div className="flex items-center space-x-2 mb-4">
+              <Sword className="text-duel-gold h-5 w-5" />
+              <span className="text-xl font-semibold text-duel-gold">DuelOn</span>
+            </div>
+            <p className="text-muted-foreground max-w-md">
+              DuelOn is the premier platform for intellectual, strategic, and skill-based duels. 
+              Challenge others, build your reputation, and climb the ranks of the dueling elite.
+            </p>
           </div>
           
-          <div className="flex space-x-8 mb-4 md:mb-0">
-            <Link to="/about" className="text-foreground/70 hover:text-duel-gold transition-colors">
-              About
-            </Link>
-            <Link to="/terms" className="text-foreground/70 hover:text-duel-gold transition-colors">
-              Terms
-            </Link>
-            <Link to="/privacy" className="text-foreground/70 hover:text-duel-gold transition-colors">
-              Privacy
-            </Link>
-            <Link to="/help" className="text-foreground/70 hover:text-duel-gold transition-colors">
-              Help
-            </Link>
+          <div>
+            <h3 className="font-medium mb-4">Navigation</h3>
+            <ul className="space-y-2">
+              <li>
+                <Link to="/" className="text-muted-foreground hover:text-duel-gold">
+                  Home
+                </Link>
+              </li>
+              <li>
+                <Link to="/duels" className="text-muted-foreground hover:text-duel-gold">
+                  Active Duels
+                </Link>
+              </li>
+              <li>
+                <Link to="/leaderboard" className="text-muted-foreground hover:text-duel-gold">
+                  Leaderboard
+                </Link>
+              </li>
+              <li>
+                <Link to="/create-duel" className="text-muted-foreground hover:text-duel-gold">
+                  Create Duel
+                </Link>
+              </li>
+            </ul>
           </div>
           
-          <div className="text-foreground/50 text-sm">
-            &copy; {new Date().getFullYear()} DuelOn. All rights reserved.
+          <div>
+            <h3 className="font-medium mb-4">Legal</h3>
+            <ul className="space-y-2">
+              <li>
+                <Link to="#" className="text-muted-foreground hover:text-duel-gold">
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link to="#" className="text-muted-foreground hover:text-duel-gold">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link to="#" className="text-muted-foreground hover:text-duel-gold">
+                  Code of Conduct
+                </Link>
+              </li>
+              <li>
+                <Link to="#" className="text-muted-foreground hover:text-duel-gold">
+                  Contact Us
+                </Link>
+              </li>
+            </ul>
           </div>
+        </div>
+        
+        <div className="mt-8 pt-8 border-t border-border text-center text-sm text-muted-foreground">
+          <p>&copy; {new Date().getFullYear()} DuelOn. All rights reserved.</p>
         </div>
       </div>
     </footer>
