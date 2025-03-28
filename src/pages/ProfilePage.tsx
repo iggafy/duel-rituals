@@ -15,7 +15,7 @@ import { getUser, getUserDuels } from '@/data/mockData';
 
 const ProfilePage = () => {
   const { id } = useParams<{ id: string }>();
-  const user = id ? getUser(id) : getUser("user-1"); // Default to first user if no ID
+  const user = id ? getUser(id) : getUser("user1"); // Default to first user if no ID
   const userDuels = user ? getUserDuels(user.id) : [];
   
   const [activeTab, setActiveTab] = useState('overview');
@@ -60,7 +60,7 @@ const ProfilePage = () => {
   const activeDuels = userDuels.filter(duel => duel.status === 'active' || duel.status === 'pending');
   const completedDuels = userDuels.filter(duel => duel.status === 'completed');
   const winCount = completedDuels.filter(duel => 
-    duel.winnerId === user.id
+    duel.winner === user.name
   ).length;
   
   return (
@@ -199,15 +199,16 @@ const ProfilePage = () => {
                                 id={duel.id}
                                 title={duel.title}
                                 challenger={duel.challenger}
-                                challengerId={duel.challengerId}
+                                challengerAvatar={duel.challengerAvatar}
                                 opponent={duel.opponent}
-                                opponentId={duel.opponentId}
+                                opponentAvatar={duel.opponentAvatar}
                                 reason={duel.reason}
                                 type={duel.type}
                                 status={duel.status}
                                 stakes={duel.stakes}
                                 spectatorCount={duel.spectatorCount}
                                 startTime={duel.startTime}
+                                createdAt={duel.createdAt}
                               />
                             ))}
                           </div>
@@ -247,15 +248,16 @@ const ProfilePage = () => {
                               id={duel.id}
                               title={duel.title}
                               challenger={duel.challenger}
-                              challengerId={duel.challengerId}
+                              challengerAvatar={duel.challengerAvatar}
                               opponent={duel.opponent}
-                              opponentId={duel.opponentId}
+                              opponentAvatar={duel.opponentAvatar}
                               reason={duel.reason}
                               type={duel.type}
                               status={duel.status}
                               stakes={duel.stakes}
                               spectatorCount={duel.spectatorCount}
                               startTime={duel.startTime}
+                              createdAt={duel.createdAt}
                             />
                           ))}
                         </div>
@@ -280,15 +282,16 @@ const ProfilePage = () => {
                               id={duel.id}
                               title={duel.title}
                               challenger={duel.challenger}
-                              challengerId={duel.challengerId}
+                              challengerAvatar={duel.challengerAvatar}
                               opponent={duel.opponent}
-                              opponentId={duel.opponentId}
+                              opponentAvatar={duel.opponentAvatar}
                               reason={duel.reason}
                               type={duel.type}
                               status={duel.status}
                               stakes={duel.stakes}
                               spectatorCount={duel.spectatorCount}
                               startTime={duel.startTime}
+                              createdAt={duel.createdAt}
                             />
                           ))}
                         </div>

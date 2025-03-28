@@ -103,13 +103,17 @@ const DuelsPage = () => {
                       id={duel.id}
                       title={duel.title}
                       challenger={duel.challenger}
+                      challengerAvatar={duel.challengerAvatar}
                       opponent={duel.opponent}
+                      opponentAvatar={duel.opponentAvatar}
                       reason={duel.reason}
                       type={duel.type}
                       status={duel.status}
                       stakes={duel.stakes}
                       spectatorCount={duel.spectatorCount}
                       startTime={duel.startTime}
+                      createdAt={duel.createdAt}
+                      duration={duel.duration}
                     />
                   ))}
                 </div>
@@ -129,13 +133,17 @@ const DuelsPage = () => {
                       id={duel.id}
                       title={duel.title}
                       challenger={duel.challenger}
+                      challengerAvatar={duel.challengerAvatar}
                       opponent={duel.opponent}
+                      opponentAvatar={duel.opponentAvatar}
                       reason={duel.reason}
                       type={duel.type}
                       status={duel.status}
                       stakes={duel.stakes}
                       spectatorCount={duel.spectatorCount}
                       startTime={duel.startTime}
+                      createdAt={duel.createdAt}
+                      duration={duel.duration}
                     />
                   ))}
                 </div>

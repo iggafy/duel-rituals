@@ -9,7 +9,8 @@ export const users = [
     wins: 42,
     losses: 12,
     specialties: ['Debate', 'Political Theory', 'Economics'],
-    title: 'Master Debater'
+    title: 'Master Debater',
+    bio: 'Founding Father, first Secretary of the Treasury, and chief architect of the American financial system.'
   },
   {
     id: 'user2',
@@ -20,7 +21,8 @@ export const users = [
     wins: 38,
     losses: 15,
     specialties: ['Law', 'Politics', 'Dueling'],
-    title: 'The Gentleman'
+    title: 'The Gentleman',
+    bio: 'American politician, third Vice President of the United States, and notorious for the duel with Alexander Hamilton.'
   },
   {
     id: 'user3',
@@ -31,7 +33,8 @@ export const users = [
     wins: 53,
     losses: 8,
     specialties: ['Philosophy', 'Architecture', 'Writing'],
-    title: 'The Sage'
+    title: 'The Sage',
+    bio: 'American statesman, diplomat, lawyer, architect, philosopher, and Founding Father who served as the third president of the United States.'
   }
 ];
 
@@ -60,7 +63,8 @@ export const duels = [
     arguments: {
       challenger: 'The Constitution clearly grants the federal government extensive powers to ensure a strong, unified nation. Its elastic clause provides flexibility to address new challenges.',
       opponent: 'The Constitution is a limiting document, designed to restrain federal power. States retain all powers not explicitly granted to the federal government.'
-    }
+    },
+    winner: null
   },
   {
     id: 'duel2',
@@ -82,7 +86,8 @@ export const duels = [
     votes: {
       challengerVotes: 12,
       opponentVotes: 15
-    }
+    },
+    winner: null
   },
   {
     id: 'duel3',
@@ -128,7 +133,8 @@ export const duels = [
     votes: {
       challengerVotes: 0,
       opponentVotes: 0
-    }
+    },
+    winner: null
   }
 ];
 
