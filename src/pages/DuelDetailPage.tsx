@@ -1,10 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import NavigationBar from '@/components/NavigationBar';
 import Footer from '@/components/Footer';
 import DuelTimer from '@/components/DuelTimer';
 import DuelActions from '@/components/DuelActions';
+import DuelComments from '@/components/DuelComments';
+import DuelVoting from '@/components/DuelVoting';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -77,7 +78,6 @@ const DuelDetailPage = () => {
 
       setDuel(data as Duel);
 
-      // Fetch challenger profile
       const { data: challengerData, error: challengerError } = await supabase
         .from('profiles')
         .select('id, username, avatar_url')
@@ -87,7 +87,6 @@ const DuelDetailPage = () => {
       if (challengerError) console.error('Error fetching challenger:', challengerError);
       else setChallenger(challengerData as Profile);
 
-      // Fetch opponent profile if exists
       if (data.opponent_id) {
         const { data: opponentData, error: opponentError } = await supabase
           .from('profiles')
@@ -99,7 +98,6 @@ const DuelDetailPage = () => {
         else setOpponent(opponentData as Profile);
       }
 
-      // Fetch winner profile if exists
       if (data.winner_id) {
         const { data: winnerData, error: winnerError } = await supabase
           .from('profiles')
@@ -111,7 +109,6 @@ const DuelDetailPage = () => {
         else setWinner(winnerData as Profile);
       }
 
-      // Fetch spectator count
       const { count, error: spectatorError } = await supabase
         .from('duel_spectators')
         .select('id', { count: 'exact' })
@@ -121,7 +118,6 @@ const DuelDetailPage = () => {
         setSpectatorCount(count);
       }
 
-      // Check if user is spectating
       if (user) {
         const { data: spectatorData, error: userSpectatorError } = await supabase
           .from('duel_spectators')
@@ -146,7 +142,6 @@ const DuelDetailPage = () => {
     if (!user || !duel || isSpectating) return;
 
     try {
-      // Add user as spectator
       await supabase
         .from('duel_spectators')
         .insert({
@@ -366,6 +361,19 @@ const DuelDetailPage = () => {
                     </div>
                   </div>
                   
+                  {duel.status === 'active' && duel.opponent_id && opponent && (
+                    <div className="mt-6 pt-6 border-t border-duel-gold/10">
+                      <DuelVoting
+                        duelId={duel.id}
+                        challengerId={duel.challenger_id}
+                        opponentId={duel.opponent_id}
+                        challengerName={challenger?.username || 'Challenger'}
+                        opponentName={opponent?.username || 'Opponent'}
+                        isParticipant={isChallenger || isOpponent}
+                      />
+                    </div>
+                  )}
+                  
                   {duel.stakes && (
                     <div className="mt-4 pt-4 border-t border-duel-gold/10">
                       <h3 className="text-lg font-semibold mb-2 flex items-center">
@@ -396,6 +404,7 @@ const DuelDetailPage = () => {
                 <DuelTimer 
                   duration={duel.duration} 
                   status={duel.status}
+                  startTime={duel.start_time}
                   onComplete={() => {
                     if (duel.status === 'active') {
                       fetchDuel();
@@ -431,6 +440,12 @@ const DuelDetailPage = () => {
               </CardContent>
             </Card>
           </div>
+          
+          <Card className="ritual-border mb-8">
+            <CardContent className="pt-6">
+              <DuelComments duelId={duel.id} />
+            </CardContent>
+          </Card>
         </div>
       </main>
       

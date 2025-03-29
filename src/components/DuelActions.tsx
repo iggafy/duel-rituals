@@ -258,7 +258,7 @@ const DuelActions: React.FC<DuelActionsProps> = ({
     
     // For active duels
     if (duelStatus === 'active' && (isChallenger || isOpponent)) {
-      const opponentId = isChallenger ? opponentId : user.id;
+      const currentOpponentId = isChallenger ? opponentId : null;
       const userId = user.id;
       
       return (
@@ -316,7 +316,7 @@ const DuelActions: React.FC<DuelActionsProps> = ({
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={() => handleCompleteDuel(opponentId || '')}
+                    onClick={() => handleCompleteDuel(currentOpponentId || '')}
                   >
                     Concede Defeat
                   </AlertDialogAction>
