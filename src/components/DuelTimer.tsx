@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Clock, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 interface DuelTimerProps {
   duration: number; // duration in minutes
@@ -19,6 +20,7 @@ const DuelTimer: React.FC<DuelTimerProps> = ({
 }) => {
   const [timeRemaining, setTimeRemaining] = useState<number>(duration * 60); // Convert to seconds
   const [progress, setProgress] = useState<number>(100);
+  const [showWarning, setShowWarning] = useState(false);
   
   useEffect(() => {
     // Only run timer for active duels
@@ -47,10 +49,24 @@ const DuelTimer: React.FC<DuelTimerProps> = ({
     const intervalId = setInterval(() => {
       setTimeRemaining(prev => {
         const newTime = Math.max(0, prev - 1);
-        setProgress(Math.max(0, Math.floor((newTime / totalDuration) * 100)));
+        const newProgress = Math.max(0, Math.floor((newTime / totalDuration) * 100));
+        setProgress(newProgress);
+        
+        // Show warning when 10% of time remains
+        if (newProgress <= 10 && !showWarning && newProgress > 0) {
+          setShowWarning(true);
+          toast.duel({
+            title: "Duel Ending Soon",
+            description: "The duel is about to conclude. Make your final moves!",
+          });
+        }
         
         // If timer reaches 0, call onComplete callback
         if (newTime === 0 && onComplete) {
+          toast.gold({
+            title: "Duel Completed",
+            description: "The time allotted for this duel has ended. Results will be tallied.",
+          });
           onComplete();
           clearInterval(intervalId);
         }
@@ -60,7 +76,7 @@ const DuelTimer: React.FC<DuelTimerProps> = ({
     }, 1000);
     
     return () => clearInterval(intervalId);
-  }, [duration, status, startTime, onComplete]);
+  }, [duration, status, startTime, onComplete, showWarning]);
   
   // Format seconds to MM:SS
   const formatTime = (seconds: number): string => {
@@ -95,7 +111,22 @@ const DuelTimer: React.FC<DuelTimerProps> = ({
                 {formatTime(timeRemaining)}
               </span>
             </div>
-            <Progress value={progress} className="h-2" />
+            <Progress 
+              value={progress} 
+              className={`h-2 ${
+                progress < 10 
+                  ? 'bg-red-900/30 [&>div]:bg-red-500' 
+                  : progress < 25 
+                    ? 'bg-orange-900/30 [&>div]:bg-orange-500' 
+                    : 'bg-accent/30'
+              }`}
+            />
+            {progress < 10 && (
+              <div className="mt-2 flex items-center text-red-400 text-sm">
+                <AlertTriangle className="h-4 w-4 mr-1" />
+                <span>Duel ending soon!</span>
+              </div>
+            )}
           </div>
         );
       case 'completed':

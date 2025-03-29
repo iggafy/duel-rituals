@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Link, Copy, Check } from 'lucide-react';
+import { Link, Copy, Check, Twitter, Facebook, Mail } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -26,7 +26,8 @@ const ShareDuelInvite = ({ duelId, duelTitle }: ShareDuelInviteProps) => {
       toast({
         title: "Link copied!",
         description: "Duel invitation link has been copied to clipboard.",
-        variant: "info",
+        variant: "default",
+        className: "bg-duel-gold/90 text-white border-duel-gold",
       });
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -60,6 +61,12 @@ const ShareDuelInvite = ({ duelId, duelTitle }: ShareDuelInviteProps) => {
     
     if (shareLink) {
       window.open(shareLink, '_blank');
+      toast({
+        title: `Shared via ${network}!`,
+        description: "Duel invitation has been shared.",
+        variant: "default",
+        className: "bg-duel/90 text-white border-duel",
+      });
     }
   };
 
@@ -103,23 +110,27 @@ const ShareDuelInvite = ({ duelId, duelTitle }: ShareDuelInviteProps) => {
               variant="outline"
               size="sm"
               onClick={() => shareViaNetwork('twitter')}
-              className="text-[#1DA1F2]"
+              className="flex items-center text-[#1DA1F2]"
             >
+              <Twitter className="h-4 w-4 mr-1" />
               Twitter
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => shareViaNetwork('facebook')}
-              className="text-[#4267B2]"
+              className="flex items-center text-[#4267B2]"
             >
+              <Facebook className="h-4 w-4 mr-1" />
               Facebook
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => shareViaNetwork('email')}
+              className="flex items-center"
             >
+              <Mail className="h-4 w-4 mr-1" />
               Email
             </Button>
           </div>

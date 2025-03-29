@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -167,6 +168,46 @@ function toast({ ...props }: Toast) {
     update,
   }
 }
+
+// Helper functions for themed notifications
+toast.success = (props: Omit<ToasterToast, "id">) => {
+  return toast({
+    ...props,
+    variant: "default",
+    className: "bg-green-600 text-white border-green-400",
+  });
+};
+
+toast.error = (props: Omit<ToasterToast, "id">) => {
+  return toast({
+    ...props,
+    variant: "destructive",
+  });
+};
+
+toast.info = (props: Omit<ToasterToast, "id">) => {
+  return toast({
+    ...props,
+    variant: "default",
+    className: "bg-blue-600 text-white border-blue-400",
+  });
+};
+
+toast.duel = (props: Omit<ToasterToast, "id">) => {
+  return toast({
+    ...props,
+    variant: "default",
+    className: "bg-duel/90 text-white border-duel",
+  });
+};
+
+toast.gold = (props: Omit<ToasterToast, "id">) => {
+  return toast({
+    ...props,
+    variant: "default",
+    className: "bg-duel-gold/90 text-white border-duel-gold",
+  });
+};
 
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)

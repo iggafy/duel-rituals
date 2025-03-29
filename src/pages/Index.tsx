@@ -1,16 +1,88 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Sword, Trophy, Shield, Users } from 'lucide-react';
+import { Sword, Trophy, Shield, Users, ExternalLink } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import DuelCard from '@/components/DuelCard';
 import NavigationBar from '@/components/NavigationBar';
 import Footer from '@/components/Footer';
 import { getActiveAndUpcomingDuels } from '@/data/mockData';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const activeDuels = getActiveAndUpcomingDuels().slice(0, 3);
+  const [duelIdInput, setDuelIdInput] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // Parse the URL for duel invitation parameters
+    const searchParams = new URLSearchParams(location.search);
+    const inviteDuelId = searchParams.get('duelId');
+    
+    if (inviteDuelId) {
+      // If duel ID is in URL, redirect to duel page
+      navigate(`/duels/${inviteDuelId}`);
+      toast({
+        title: "Duel Invitation",
+        description: "You've been invited to join a duel!",
+        variant: "default",
+        className: "bg-duel/90 text-white border-duel",
+      });
+    }
+  }, [location, navigate]);
+
+  const handleJoinDuel = () => {
+    if (!duelIdInput.trim()) {
+      toast({
+        title: "Missing Duel ID",
+        description: "Please enter a valid duel invitation code",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // First check if the duel exists
+    const checkDuel = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('duels')
+          .select('id')
+          .eq('id', duelIdInput)
+          .single();
+
+        if (error || !data) {
+          toast({
+            title: "Invalid Duel",
+            description: "The duel invitation code you entered doesn't exist",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Duel exists, navigate to it
+        navigate(`/duels/${duelIdInput}`);
+        toast({
+          title: "Duel Found",
+          description: "Joining the duel...",
+          variant: "default",
+          className: "bg-duel-gold/90 text-white border-duel-gold",
+        });
+      } catch (err) {
+        console.error("Error checking duel:", err);
+        toast({
+          title: "Error",
+          description: "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    checkDuel();
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -56,6 +128,36 @@ const Index = () => {
                   </Link>
                 </Button>
               </div>
+            </div>
+          </div>
+        </section>
+        
+        {/* Join Duel Section */}
+        <section className="py-12 bg-duel-dark/30">
+          <div className="container">
+            <div className="max-w-2xl mx-auto">
+              <Card className="ritual-border overflow-hidden">
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-bold mb-4 text-duel-gold flex items-center">
+                    <ExternalLink className="h-5 w-5 mr-2" />
+                    Join a Duel by Invitation
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    Have you received a duel invitation? Enter the duel code below to join the battle.
+                  </p>
+                  <div className="flex space-x-2">
+                    <Input
+                      placeholder="Enter duel invitation code"
+                      value={duelIdInput}
+                      onChange={(e) => setDuelIdInput(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button onClick={handleJoinDuel} className="bg-duel hover:bg-duel-light">
+                      Join Duel
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </section>
