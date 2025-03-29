@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -30,7 +29,6 @@ import {
 import { Sword, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-// Define the form schema with validation
 const duelFormSchema = z.object({
   title: z.string().min(5, {
     message: "Title must be at least 5 characters.",
@@ -76,7 +74,7 @@ const CreateDuelForm = () => {
       stakes: "",
       opponentUsername: "",
       type: "intellectual",
-      duration: 30, // Default 30 minutes
+      duration: 30,
     },
   });
 
@@ -85,7 +83,7 @@ const CreateDuelForm = () => {
       toast({
         title: "Authentication required",
         description: "You must be logged in to create a duel.",
-        variant: "destructive",
+        variant: "duel",
       });
       return;
     }
@@ -94,7 +92,6 @@ const CreateDuelForm = () => {
     setError(null);
 
     try {
-      // First, find the opponent by username
       const { data: opponentData, error: opponentError } = await supabase
         .from('profiles')
         .select('id, username')
@@ -107,14 +104,12 @@ const CreateDuelForm = () => {
         return;
       }
 
-      // Check if the opponent is the same as the challenger
       if (opponentData.id === user.id) {
         setError("You cannot challenge yourself to a duel.");
         setIsSubmitting(false);
         return;
       }
 
-      // Create the duel in the database
       const { data: duel, error: duelError } = await supabase
         .from('duels')
         .insert({
@@ -125,7 +120,7 @@ const CreateDuelForm = () => {
           opponent_id: opponentData.id,
           status: 'pending',
           type: values.type,
-          duration: values.duration * 60, // Convert minutes to seconds for storage
+          duration: values.duration * 60,
         })
         .select()
         .single();
@@ -137,16 +132,14 @@ const CreateDuelForm = () => {
         return;
       }
 
-      // Success! Notify the user and redirect to the new duel
       toast({
         title: "Duel Challenge Sent!",
         description: `You have challenged ${values.opponentUsername} to a duel. They must accept to begin.`,
+        variant: "success",
       });
 
-      // Reset the form
       form.reset();
       
-      // Navigate to the duel page
       navigate(`/duels/${duel.id}`);
 
     } catch (err) {

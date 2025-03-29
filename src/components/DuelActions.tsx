@@ -1,8 +1,17 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 import { 
+  Check, 
+  X, 
+  Flag,
+  AlertTriangle,
+  Share,
+  Trophy
+} from 'lucide-react';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -13,10 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { toast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { Sword, X, Crown } from 'lucide-react';
+import ShareDuelInvite from './ShareDuelInvite';
 
 interface DuelActionsProps {
   duelId: string;
@@ -27,315 +33,241 @@ interface DuelActionsProps {
   onStatusUpdate: () => void;
 }
 
-const DuelActions: React.FC<DuelActionsProps> = ({ 
-  duelId, 
-  duelStatus, 
-  isChallenger, 
+const DuelActions = ({
+  duelId,
+  duelStatus,
+  isChallenger,
   isOpponent,
   opponentId,
   onStatusUpdate
-}) => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+}: DuelActionsProps) => {
+  const [isLoading, setIsLoading] = useState(false);
 
-  if (!user) return null;
-
-  const handleAcceptChallenge = async () => {
+  const handleAcceptDuel = async () => {
     if (!isOpponent || duelStatus !== 'pending') return;
     
-    setIsSubmitting(true);
+    setIsLoading(true);
     try {
+      const now = new Date().toISOString();
       const { error } = await supabase
         .from('duels')
-        .update({ 
+        .update({
           status: 'active',
-          start_time: new Date().toISOString()
+          start_time: now
         })
         .eq('id', duelId);
-
+      
       if (error) throw error;
       
       toast({
-        title: "Challenge Accepted!",
-        description: "The duel has begun. May the best contestant win!",
+        title: "Duel Accepted!",
+        description: "The duel has begun. May the best duelist win!",
+        variant: "success",
       });
       
       onStatusUpdate();
-    } catch (error) {
-      console.error('Error accepting challenge:', error);
+    } catch (err) {
+      console.error('Error accepting duel:', err);
       toast({
-        title: "Error",
-        description: "Failed to accept the challenge. Please try again.",
+        title: "Failed to accept duel",
+        description: "There was an error accepting the duel. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
-
-  const handleDeclineChallenge = async () => {
+  
+  const handleDeclineDuel = async () => {
     if (!isOpponent || duelStatus !== 'pending') return;
     
-    setIsSubmitting(true);
+    setIsLoading(true);
     try {
+      const now = new Date().toISOString();
       const { error } = await supabase
         .from('duels')
-        .update({ status: 'declined' })
+        .update({
+          status: 'declined',
+          start_time: now // Using start_time to record when it was declined
+        })
         .eq('id', duelId);
-
+      
       if (error) throw error;
       
       toast({
-        title: "Challenge Declined",
-        description: "You have declined this duel challenge.",
+        title: "Duel Declined",
+        description: "You have declined the duel challenge.",
+        variant: "info",
       });
       
       onStatusUpdate();
-    } catch (error) {
-      console.error('Error declining challenge:', error);
+    } catch (err) {
+      console.error('Error declining duel:', err);
       toast({
-        title: "Error",
-        description: "Failed to decline the challenge. Please try again.",
+        title: "Failed to decline duel",
+        description: "There was an error declining the duel. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
-
+  
   const handleCompleteDuel = async (winnerId: string) => {
-    if (duelStatus !== 'active' || (!isChallenger && !isOpponent)) return;
+    if (duelStatus !== 'active') return;
+    if (!isChallenger && !isOpponent) return;
     
-    setIsSubmitting(true);
+    setIsLoading(true);
     try {
+      const now = new Date().toISOString();
       const { error } = await supabase
         .from('duels')
-        .update({ 
+        .update({
           status: 'completed',
-          end_time: new Date().toISOString(),
+          end_time: now,
           winner_id: winnerId
         })
         .eq('id', duelId);
-
+      
       if (error) throw error;
       
-      const winnerIsUser = winnerId === user.id;
-      
       toast({
-        title: "Duel Completed",
-        description: winnerIsUser 
-          ? "Congratulations on your victory!" 
-          : "The duel has been completed. Honor in defeat.",
+        title: "Duel Completed!",
+        description: "The duel has been marked as completed.",
+        variant: "success",
       });
       
       onStatusUpdate();
-    } catch (error) {
-      console.error('Error completing duel:', error);
+    } catch (err) {
+      console.error('Error completing duel:', err);
       toast({
-        title: "Error",
-        description: "Failed to complete the duel. Please try again.",
+        title: "Failed to complete duel",
+        description: "There was an error completing the duel. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
-
-  const handleCancelChallenge = async () => {
-    if (!isChallenger || duelStatus !== 'pending') return;
-    
-    setIsSubmitting(true);
-    try {
-      const { error } = await supabase
-        .from('duels')
-        .delete()
-        .eq('id', duelId);
-
-      if (error) throw error;
-      
-      toast({
-        title: "Challenge Cancelled",
-        description: "You have cancelled this duel challenge.",
-      });
-      
-      navigate('/duels');
-    } catch (error) {
-      console.error('Error cancelling challenge:', error);
-      toast({
-        title: "Error",
-        description: "Failed to cancel the challenge. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Renders action buttons based on duel status and user role
-  const renderActions = () => {
-    // For pending duels
-    if (duelStatus === 'pending') {
-      if (isOpponent) {
-        return (
-          <div className="flex gap-4">
-            <Button 
-              className="flex-1 bg-duel hover:bg-duel-light" 
-              onClick={handleAcceptChallenge}
-              disabled={isSubmitting}
-            >
-              <Sword className="mr-2 h-5 w-5" />
-              Accept Challenge
-            </Button>
-            
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  className="flex-1 border-red-500/50 text-red-500 hover:bg-red-500/10 hover:text-red-600"
-                  disabled={isSubmitting}
-                >
-                  <X className="mr-2 h-5 w-5" />
-                  Decline
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Decline Challenge</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to decline this duel challenge? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-red-500 hover:bg-red-600"
-                    onClick={handleDeclineChallenge}
-                  >
-                    Decline Challenge
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        );
-      }
-      
-      if (isChallenger) {
-        return (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button 
-                variant="outline" 
-                className="w-full border-red-500/50 text-red-500 hover:bg-red-500/10 hover:text-red-600"
-                disabled={isSubmitting}
-              >
-                <X className="mr-2 h-5 w-5" />
-                Cancel Challenge
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Cancel Challenge</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to cancel this duel challenge? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-red-500 hover:bg-red-600"
-                  onClick={handleCancelChallenge}
-                >
-                  Cancel Challenge
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        );
-      }
-    }
-    
-    // For active duels
-    if (duelStatus === 'active' && (isChallenger || isOpponent)) {
-      const currentOpponentId = isChallenger ? opponentId : null;
-      const userId = user.id;
-      
-      return (
-        <div className="space-y-4">
-          <p className="text-center text-muted-foreground">Declare the outcome of this duel:</p>
+  
+  if (duelStatus === 'pending' && isOpponent) {
+    return (
+      <div className="flex justify-between mt-6 pt-6 border-t border-duel-gold/10">
+        <h3 className="text-lg font-semibold mb-2 flex items-center">
+          <AlertTriangle className="h-5 w-5 mr-2 text-amber-500" />
+          Duel Challenge
+        </h3>
+        
+        <div className="space-x-3">
+          <Button 
+            variant="outline" 
+            className="border-red-500/30 text-red-500 hover:bg-red-900/10 hover:text-red-400"
+            disabled={isLoading}
+            onClick={handleDeclineDuel}
+          >
+            <X className="mr-2 h-4 w-4" />
+            Decline
+          </Button>
           
-          <div className="flex gap-4">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  className="flex-1 bg-duel-gold hover:bg-duel-gold/80 text-black"
-                  disabled={isSubmitting}
-                >
-                  <Crown className="mr-2 h-5 w-5" />
-                  I Won
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Declare Victory</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you declaring yourself the winner of this duel? This should be agreed upon by both participants.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-duel-gold hover:bg-duel-gold/80 text-black"
-                    onClick={() => handleCompleteDuel(userId)}
+          <Button 
+            className="bg-green-700 hover:bg-green-600 text-white"
+            disabled={isLoading}
+            onClick={handleAcceptDuel}
+          >
+            <Check className="mr-2 h-4 w-4" />
+            Accept Challenge
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  
+  if (duelStatus === 'active' && (isChallenger || isOpponent)) {
+    // Determine opposing duelist ID
+    const opposingDuelistId = isChallenger ? opponentId : null; // If not challenger, then user is opponent
+    const currentUserId = isChallenger ? null : opponentId; // If challenger, then current user is challenger
+    
+    return (
+      <div className="mt-6 pt-6 border-t border-duel-gold/10">
+        <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-4">
+          <h3 className="text-lg font-semibold flex items-center">
+            <Flag className="h-5 w-5 mr-2 text-duel-gold" />
+            Declare Outcome
+          </h3>
+          
+          <div className="flex flex-wrap gap-3">
+            {/* Declare opponent as winner */}
+            {opposingDuelistId && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="outline"
+                    className="border-duel-gold/30 text-duel-gold hover:bg-duel-gold/10"
+                    disabled={isLoading}
                   >
-                    Declare Victory
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    <Trophy className="mr-2 h-4 w-4" />
+                    Declare Opponent Victor
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Concede Defeat?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      You are about to declare your opponent as the winner of this duel. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => handleCompleteDuel(opposingDuelistId)}
+                      className="bg-duel hover:bg-duel-light"
+                    >
+                      Confirm
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="outline"
-                  className="flex-1"
-                  disabled={isSubmitting}
-                >
-                  <Crown className="mr-2 h-5 w-5" />
-                  Opponent Won
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Concede Defeat</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you conceding defeat in this duel? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => handleCompleteDuel(currentOpponentId || '')}
+            {/* Declare self as winner */}
+            {currentUserId && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="outline"
+                    className="border-green-700/30 text-green-500 hover:bg-green-900/10"
+                    disabled={isLoading}
                   >
-                    Concede Defeat
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    <Trophy className="mr-2 h-4 w-4" />
+                    Claim Victory
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Claim Victory?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      You are about to declare yourself as the winner of this duel. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => handleCompleteDuel(currentUserId)}
+                      className="bg-green-700 hover:bg-green-600"
+                    >
+                      Confirm
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
-      );
-    }
-    
-    return null;
-  };
-
-  return (
-    <div className="mt-6 border-t border-duel-gold/20 pt-6">
-      {renderActions()}
-    </div>
-  );
+      </div>
+    );
+  }
+  
+  return null;
 };
 
 export default DuelActions;

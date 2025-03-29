@@ -6,6 +6,7 @@ import DuelTimer from '@/components/DuelTimer';
 import DuelActions from '@/components/DuelActions';
 import DuelComments from '@/components/DuelComments';
 import DuelVoting from '@/components/DuelVoting';
+import ShareDuelInvite from '@/components/ShareDuelInvite';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -243,7 +244,10 @@ const DuelDetailPage = () => {
       <main className="flex-1 container py-8">
         <div className="max-w-4xl mx-auto">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-duel-gold mb-2">{duel.title}</h1>
+            <div className="flex justify-between items-start mb-2">
+              <h1 className="text-3xl font-bold text-duel-gold">{duel.title}</h1>
+              <ShareDuelInvite duelId={duel.id} duelTitle={duel.title} />
+            </div>
             <div className="flex flex-wrap gap-2 mb-4">
               <Badge className={cn("transition-colors", getTypeClass(duel.type))}>
                 <span className="flex items-center">
