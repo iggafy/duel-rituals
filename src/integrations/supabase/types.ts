@@ -203,9 +203,42 @@ export type Database = {
           },
         ]
       }
+      featured_duels: {
+        Row: {
+          duel_id: string
+          duel_title: string
+          featured_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          duel_id: string
+          duel_title: string
+          featured_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          duel_id?: string
+          duel_title?: string
+          featured_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "featured_duels_duel_id_fkey"
+            columns: ["duel_id"]
+            isOneToOne: false
+            referencedRelation: "duels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
           created_at: string
           duels_lost: number | null
           duels_participated: number | null
@@ -217,6 +250,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           duels_lost?: number | null
           duels_participated?: number | null
@@ -228,6 +262,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           duels_lost?: number | null
           duels_participated?: number | null

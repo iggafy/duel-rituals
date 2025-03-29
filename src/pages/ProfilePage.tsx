@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,14 +11,60 @@ import { Trophy, Sword, Shield, User } from 'lucide-react';
 import NavigationBar from '@/components/NavigationBar';
 import Footer from '@/components/Footer';
 import DuelCard from '@/components/DuelCard';
+import FeaturedDuels from '@/components/FeaturedDuels';
 import { getUser, getUserDuels } from '@/data/mockData';
+import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Profile } from '@/types/database.types';
 
 const ProfilePage = () => {
   const { id } = useParams<{ id: string }>();
-  const user = id ? getUser(id) : getUser("user1"); // Default to first user if no ID
+  const { user: currentUser, profile: currentUserProfile } = useAuth();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('overview');
+
+  // First try to get profile from Supabase, then fall back to mock data
+  const { data: userProfile, isLoading } = useQuery({
+    queryKey: ['profile', id || currentUser?.id],
+    queryFn: async () => {
+      const userId = id || currentUser?.id;
+      if (!userId) return null;
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching profile:', error);
+        // Fall back to mock data
+        return id ? getUser(id) : getUser("user1");
+      }
+      
+      return data as Profile;
+    },
+    enabled: !!id || !!currentUser?.id
+  });
+
+  // Fall back to mock data if no profile is found
+  const user = userProfile || (id ? getUser(id) : getUser("user1"));
   const userDuels = user ? getUserDuels(user.id) : [];
   
-  const [activeTab, setActiveTab] = useState('overview');
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <NavigationBar />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold mb-4">Loading Profile...</h1>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
   
   if (!user) {
     return (
@@ -40,6 +86,7 @@ const ProfilePage = () => {
   
   // Get the first letters of the name for the avatar fallback
   const getInitials = (name: string) => {
+    if (!name) return 'U';
     return name
       .split(' ')
       .map(part => part[0])
@@ -49,6 +96,7 @@ const ProfilePage = () => {
   
   // Calculate reputation level
   const getReputationLevel = (rep: number) => {
+    if (!rep) return 'Novice';
     if (rep >= 1000) return 'Legendary';
     if (rep >= 750) return 'Honored';
     if (rep >= 500) return 'Respected';
@@ -59,9 +107,12 @@ const ProfilePage = () => {
   
   const activeDuels = userDuels.filter(duel => duel.status === 'active' || duel.status === 'pending');
   const completedDuels = userDuels.filter(duel => duel.status === 'completed');
-  const winCount = completedDuels.filter(duel => 
+  const winCount = userProfile?.duels_won || completedDuels.filter(duel => 
     duel.winner === user.name
   ).length;
+  
+  const isCurrentUserProfile = currentUser && (id === currentUser.id || (!id && currentUserProfile));
+  const displayUserId = userProfile?.id || id || currentUser?.id || "user1";
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -76,17 +127,17 @@ const ProfilePage = () => {
                 <CardContent className="pt-6">
                   <div className="flex flex-col items-center text-center mb-6">
                     <Avatar className="h-24 w-24 border-2 border-duel-gold/40 mb-4">
-                      <AvatarImage src={user.avatar} alt={user.name} />
+                      <AvatarImage src={userProfile?.avatar_url || user.avatar} alt={userProfile?.username || user.name} />
                       <AvatarFallback className="bg-duel text-white text-xl">
-                        {getInitials(user.name)}
+                        {getInitials(userProfile?.username || user.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <h1 className="text-2xl font-bold">{user.name}</h1>
+                    <h1 className="text-2xl font-bold">{userProfile?.username || user.name}</h1>
                     {user.title && <p className="text-duel-gold">{user.title}</p>}
                     <div className="flex items-center mt-2">
                       <Trophy className="h-4 w-4 text-duel-gold mr-1" />
                       <span className="text-sm font-medium">
-                        {getReputationLevel(user.reputation)} • {user.reputation} Rep
+                        {getReputationLevel(userProfile?.reputation || user.reputation)} • {userProfile?.reputation || user.reputation} Rep
                       </span>
                     </div>
                   </div>
@@ -94,18 +145,28 @@ const ProfilePage = () => {
                   <div className="grid grid-cols-3 gap-2 mb-6 text-center">
                     <div className="bg-secondary p-2 rounded-md">
                       <div className="text-sm text-muted-foreground">Duels</div>
-                      <div className="font-bold">{user.wins + user.losses}</div>
+                      <div className="font-bold">
+                        {userProfile ? 
+                          ((userProfile.duels_won || 0) + (userProfile.duels_lost || 0)) : 
+                          (user.wins + user.losses)}
+                      </div>
                     </div>
                     <div className="bg-secondary p-2 rounded-md">
                       <div className="text-sm text-muted-foreground">Wins</div>
-                      <div className="font-bold text-green-400">{user.wins}</div>
+                      <div className="font-bold text-green-400">
+                        {userProfile?.duels_won || user.wins}
+                      </div>
                     </div>
                     <div className="bg-secondary p-2 rounded-md">
                       <div className="text-sm text-muted-foreground">Win Rate</div>
                       <div className="font-bold">
-                        {user.wins + user.losses > 0 
-                          ? Math.round((user.wins / (user.wins + user.losses)) * 100) 
-                          : 0}%
+                        {userProfile ? 
+                          ((userProfile.duels_won || 0) + (userProfile.duels_lost || 0) > 0 
+                            ? Math.round(((userProfile.duels_won || 0) / ((userProfile.duels_won || 0) + (userProfile.duels_lost || 0))) * 100) 
+                            : 0) : 
+                          (user.wins + user.losses > 0 
+                            ? Math.round((user.wins / (user.wins + user.losses)) * 100) 
+                            : 0)}%
                       </div>
                     </div>
                   </div>
@@ -116,7 +177,7 @@ const ProfilePage = () => {
                     <div>
                       <h3 className="text-sm font-medium mb-2">Specialties</h3>
                       <div className="flex flex-wrap gap-2">
-                        {user.specialties.map((specialty, index) => (
+                        {user.specialties?.map((specialty, index) => (
                           <Badge key={index} variant="secondary" className="bg-duel/30 text-foreground">
                             {specialty}
                           </Badge>
@@ -129,17 +190,23 @@ const ProfilePage = () => {
                       <ul className="space-y-2 text-sm">
                         <li className="flex items-start">
                           <Trophy className="h-4 w-4 text-duel-gold mr-2 mt-0.5" />
-                          <span>Won {winCount} duels</span>
+                          <span>Won {userProfile?.duels_won || winCount} duels</span>
                         </li>
                         <li className="flex items-start">
                           <Shield className="h-4 w-4 text-duel-gold mr-2 mt-0.5" />
-                          <span>Maintained a {user.wins + user.losses > 0 
-                            ? Math.round((user.wins / (user.wins + user.losses)) * 100) 
-                            : 0}% win rate</span>
+                          <span>Maintained a {userProfile ? 
+                            ((userProfile.duels_won || 0) + (userProfile.duels_lost || 0) > 0 
+                              ? Math.round(((userProfile.duels_won || 0) / ((userProfile.duels_won || 0) + (userProfile.duels_lost || 0))) * 100) 
+                              : 0) : 
+                            (user.wins + user.losses > 0 
+                              ? Math.round((user.wins / (user.wins + user.losses)) * 100) 
+                              : 0)}% win rate</span>
                         </li>
                         <li className="flex items-start">
                           <Sword className="h-4 w-4 text-duel-gold mr-2 mt-0.5" />
-                          <span>Participated in {user.wins + user.losses} duels</span>
+                          <span>Participated in {userProfile ? 
+                            ((userProfile.duels_won || 0) + (userProfile.duels_lost || 0)) : 
+                            (user.wins + user.losses)} duels</span>
                         </li>
                       </ul>
                     </div>
@@ -150,12 +217,28 @@ const ProfilePage = () => {
                   <div className="flex justify-center">
                     <Button 
                       className="w-full bg-duel hover:bg-duel-light text-white"
-                      asChild
+                      onClick={() => {
+                        if (isCurrentUserProfile) {
+                          // Edit profile functionality would go here
+                          alert('Edit profile functionality coming soon');
+                        } else {
+                          navigate('/create-duel', { 
+                            state: { opponentId: displayUserId } 
+                          });
+                        }
+                      }}
                     >
-                      <Link to="/create-duel">
-                        <Sword className="mr-2 h-4 w-4" />
-                        Challenge to Duel
-                      </Link>
+                      {isCurrentUserProfile ? (
+                        <>
+                          <User className="mr-2 h-4 w-4" />
+                          Edit Profile
+                        </>
+                      ) : (
+                        <>
+                          <Sword className="mr-2 h-4 w-4" />
+                          Challenge to Duel
+                        </>
+                      )}
                     </Button>
                   </div>
                 </CardContent>
@@ -182,9 +265,12 @@ const ProfilePage = () => {
                         <CardTitle>About</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-muted-foreground">{user.bio || "This duelist has not provided a biography."}</p>
+                        <p className="text-muted-foreground">{userProfile?.bio || user.bio || "This duelist has not provided a biography."}</p>
                       </CardContent>
                     </Card>
+                    
+                    {/* Featured Duels Section */}
+                    <FeaturedDuels userId={displayUserId} />
                     
                     <Card className="ritual-border">
                       <CardHeader>
