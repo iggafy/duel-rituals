@@ -17,11 +17,12 @@ interface ShareDuelInviteProps {
 
 const ShareDuelInvite = ({ duelId, duelTitle }: ShareDuelInviteProps) => {
   const [copied, setCopied] = useState(false);
-  const shareUrl = `${window.location.origin}/duels/${duelId}`;
+  const shareUrl = `${window.location.origin}?duelId=${duelId}`;
+  const directUrl = `${window.location.origin}/duels/${duelId}`;
 
-  const copyToClipboard = async () => {
+  const copyToClipboard = async (url: string) => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       toast({
         title: "Link copied!",
@@ -53,7 +54,7 @@ const ShareDuelInvite = ({ duelId, duelTitle }: ShareDuelInviteProps) => {
         shareLink = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
         break;
       case 'email':
-        shareLink = `mailto:?subject=${encodedTitle}&body=${encodeURIComponent(`Check out this duel: ${shareUrl}`)}`;
+        shareLink = `mailto:?subject=${encodedTitle}&body=${encodeURIComponent(`I challenge you to a duel! Click this link to join: ${shareUrl}`)}`;
         break;
       default:
         shareLink = '';
@@ -89,20 +90,43 @@ const ShareDuelInvite = ({ duelId, duelTitle }: ShareDuelInviteProps) => {
             Share this link to invite others to view or participate in this duel.
           </p>
           
-          <div className="flex space-x-2">
-            <Input 
-              value={shareUrl}
-              readOnly
-              className="flex-1"
-            />
-            <Button 
-              size="icon" 
-              onClick={copyToClipboard} 
-              variant="outline"
-              className={copied ? "text-green-500 border-green-500/30" : ""}
-            >
-              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            </Button>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Invitation Link (redirects to home)</label>
+            <div className="flex space-x-2">
+              <Input 
+                value={shareUrl}
+                readOnly
+                className="flex-1"
+              />
+              <Button 
+                size="icon" 
+                onClick={() => copyToClipboard(shareUrl)} 
+                variant="outline"
+                className={copied ? "text-green-500 border-green-500/30" : ""}
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Best for inviting new participants</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Direct Duel Link</label>
+            <div className="flex space-x-2">
+              <Input 
+                value={directUrl}
+                readOnly
+                className="flex-1"
+              />
+              <Button 
+                size="icon" 
+                onClick={() => copyToClipboard(directUrl)} 
+                variant="outline"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">For sharing with existing users</p>
           </div>
           
           <div className="flex justify-between pt-2">

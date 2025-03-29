@@ -3,17 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Sword, Trophy, Shield, Users, ExternalLink } from 'lucide-react';
+import { Sword, Trophy, Shield, Users, ExternalLink, MessageCircle, Award, Clock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import DuelCard from '@/components/DuelCard';
 import NavigationBar from '@/components/NavigationBar';
 import Footer from '@/components/Footer';
-import { getActiveAndUpcomingDuels } from '@/data/mockData';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
-  const activeDuels = getActiveAndUpcomingDuels().slice(0, 3);
   const [duelIdInput, setDuelIdInput] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
@@ -114,7 +111,7 @@ const Index = () => {
                 >
                   <Link to="/create-duel">
                     <Sword className="mr-2 h-5 w-5" />
-                    Initiate a Duel
+                    Challenge to a Duel
                   </Link>
                 </Button>
                 <Button 
@@ -213,43 +210,85 @@ const Index = () => {
           </div>
         </section>
         
-        {/* Active Duels Section */}
+        {/* How It Works Section - Replaces Active Duels */}
         <section className="py-16">
           <div className="container">
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-bold">Active Duels</h2>
+              <h2 className="text-2xl font-bold">How It Works</h2>
               <Button variant="link" className="text-duel-gold" asChild>
                 <Link to="/duels">View All Duels</Link>
               </Button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activeDuels.map(duel => (
-                <DuelCard 
-                  key={duel.id}
-                  id={duel.id}
-                  title={duel.title}
-                  challenger={{ 
-                    name: duel.challenger, 
-                    avatar: duel.challengerAvatar 
-                  }}
-                  challengerId={duel.challengerId}
-                  opponent={duel.opponent ? { 
-                    name: duel.opponent, 
-                    avatar: duel.opponentAvatar 
-                  } : undefined}
-                  opponentId={duel.opponentId}
-                  reason={duel.reason}
-                  type={duel.type as "intellectual" | "strategic" | "physical"}
-                  status={duel.status as "active" | "pending" | "completed" | "declined"}
-                  stakes={duel.stakes}
-                  spectatorCount={duel.spectatorCount}
-                  startTime={duel.startTime}
-                  createdAt={duel.createdAt}
-                  duration={duel.duration}
-                  winner={duel.winner}
-                />
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <Card className="ritual-border overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="flex flex-col items-center text-center space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-duel/20 flex items-center justify-center">
+                      <Sword className="h-8 w-8 text-duel-gold" />
+                    </div>
+                    <h3 className="text-xl font-bold">1. Issue a Challenge</h3>
+                    <p className="text-muted-foreground">
+                      Begin by challenging an opponent. Define the duel's terms, including type, stakes, and reason for the confrontation.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      className="border-duel-gold/60 text-duel-gold hover:bg-duel-gold/10 mt-4 w-full"
+                      asChild
+                    >
+                      <Link to="/create-duel">
+                        Challenge Now
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="ritual-border overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="flex flex-col items-center text-center space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-duel/20 flex items-center justify-center">
+                      <MessageCircle className="h-8 w-8 text-duel-gold" />
+                    </div>
+                    <h3 className="text-xl font-bold">2. Negotiate & Accept</h3>
+                    <p className="text-muted-foreground">
+                      The challenged party reviews the terms and can accept, negotiate, or decline. Once accepted, the duel begins.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      className="border-duel-gold/60 text-duel-gold hover:bg-duel-gold/10 mt-4 w-full"
+                      asChild
+                    >
+                      <Link to="/duels">
+                        View Pending Duels
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="ritual-border overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="flex flex-col items-center text-center space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-duel/20 flex items-center justify-center">
+                      <Award className="h-8 w-8 text-duel-gold" />
+                    </div>
+                    <h3 className="text-xl font-bold">3. Resolution & Verdict</h3>
+                    <p className="text-muted-foreground">
+                      After the duel concludes, spectators vote on the winner. The community verdict determines the outcome.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      className="border-duel-gold/60 text-duel-gold hover:bg-duel-gold/10 mt-4 w-full"
+                      asChild
+                    >
+                      <Link to="/leaderboard">
+                        View Leaderboard
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </section>
