@@ -28,14 +28,15 @@ const ShareToProfile = ({ duelId, duelTitle }: ShareToProfileProps) => {
     }
 
     try {
-      // This is a placeholder for actual profile linking functionality
-      // In a real implementation, you'd update a user_duels table or similar
+      // Create a featured_duels table entry instead of using bio
       const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          bio: `${profile?.bio || ''}\n\nFeatured Duel: ${duelTitle} - /duels/${duelId}` 
-        })
-        .eq('id', user.id);
+        .from('featured_duels')
+        .upsert({ 
+          user_id: user.id,
+          duel_id: duelId,
+          duel_title: duelTitle,
+          featured_at: new Date().toISOString()
+        });
 
       if (error) throw error;
 

@@ -28,6 +28,14 @@ export type Duel = {
   updated_at: string;
 };
 
+export type FeaturedDuel = {
+  id: string;
+  user_id: string;
+  duel_id: string;
+  duel_title: string;
+  featured_at: string;
+};
+
 export type DuelVote = {
   id: string;
   duel_id: string;
