@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,12 +8,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Link } from 'react-router-dom';
 import { MessageSquare, AlertCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-
-interface Profile {
-  id: string;
-  username: string;
-  avatar_url: string | null;
-}
+import { Profile } from '@/types/database.types';
 
 interface Comment {
   id: string;
@@ -120,10 +114,6 @@ const DuelComments: React.FC<DuelCommentsProps> = ({ duelId }) => {
     }
   };
 
-  useEffect(() => {
-    fetchComments();
-  }, [duelId]);
-
   const formatTimeAgo = (dateString: string) => {
     try {
       return formatDistanceToNow(new Date(dateString), { addSuffix: true });
@@ -131,6 +121,10 @@ const DuelComments: React.FC<DuelCommentsProps> = ({ duelId }) => {
       return 'recently';
     }
   };
+
+  useEffect(() => {
+    fetchComments();
+  }, [duelId]);
 
   return (
     <div className="space-y-6">

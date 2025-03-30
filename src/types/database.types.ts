@@ -92,7 +92,7 @@ export type UnifiedProfile = {
 
 // Helper functions to convert between types
 export function toUnifiedProfile(source: Profile | MockUser): UnifiedProfile {
-  if ('username' in source && 'avatar_url' in source) {
+  if ('username' in source && 'created_at' in source) {
     // It's a Supabase Profile
     const profile = source as Profile;
     return {
