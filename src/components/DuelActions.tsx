@@ -46,6 +46,7 @@ const DuelActions = ({
     
     setIsLoading(true);
     try {
+      console.log('Accepting duel with ID:', duelId);
       const now = new Date().toISOString();
       const { error } = await supabase
         .from('duels')
@@ -55,19 +56,24 @@ const DuelActions = ({
         })
         .eq('id', duelId);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error when accepting duel:', error);
+        throw error;
+      }
       
+      console.log('Duel accepted successfully');
       toast({
         title: "Duel Accepted!",
         description: "The duel has begun. May the best duelist win!",
         variant: "success",
       });
       
-      // Force a full data reload after status update
+      // Trigger data reload
+      onStatusUpdate();
+      
+      // Delay before reloading to allow the state to update first
       setTimeout(() => {
-        onStatusUpdate();
-        // Reload the page to ensure all components update properly
-        window.location.reload();
+        window.location.href = `/duels/${duelId}?status=active`;
       }, 1000);
       
     } catch (err) {
@@ -105,6 +111,11 @@ const DuelActions = ({
       });
       
       onStatusUpdate();
+      
+      // Redirect to duels list
+      setTimeout(() => {
+        window.location.href = '/duels';
+      }, 1000);
     } catch (err) {
       console.error('Error declining duel:', err);
       toast({

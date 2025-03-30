@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import NavigationBar from '@/components/NavigationBar';
 import Footer from '@/components/Footer';
 import DuelTimer from '@/components/DuelTimer';
@@ -55,6 +55,8 @@ interface Duel {
 const DuelDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const statusParam = searchParams.get('status');
   const { user } = useAuth();
   const [duel, setDuel] = useState<Duel | null>(null);
   const [challenger, setChallenger] = useState<Profile | null>(null);
@@ -65,6 +67,7 @@ const DuelDetailPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [spectatorCount, setSpectatorCount] = useState(0);
   const [isSpectating, setIsSpectating] = useState(false);
+  const [forceReload, setForceReload] = useState(0);
 
   const fetchDuel = async () => {
     if (!id) return;
@@ -93,6 +96,14 @@ const DuelDetailPage = () => {
 
       console.log("Fetched duel data:", data);
       setDuel(data as Duel);
+
+      // If we just accepted the duel and the URL has a status parameter
+      // but the duel hasn't updated yet in the database, force the UI to show it as active
+      if (statusParam === 'active' && data.status === 'pending') {
+        console.log("Status override: forcing duel to display as active");
+        const updatedDuel = {...data, status: 'active'} as Duel;
+        setDuel(updatedDuel);
+      }
 
       // Fetch challenger profile
       const { data: challengerData, error: challengerError } = await supabase
@@ -180,7 +191,13 @@ const DuelDetailPage = () => {
 
   const handleRefresh = () => {
     setIsRefreshing(true);
+    setForceReload(prev => prev + 1);
     fetchDuel();
+  };
+
+  const handleStatusUpdate = () => {
+    console.log("Status update triggered, refreshing duel data");
+    setForceReload(prev => prev + 1);
   };
 
   const handleSpectate = async () => {
@@ -219,6 +236,7 @@ const DuelDetailPage = () => {
     
     // Set up a subscription to duel updates
     if (id) {
+      console.log(`Setting up realtime subscription for duel ${id}`);
       const duelChannel = supabase
         .channel(`duel-${id}`)
         .on('postgres_changes', { 
@@ -236,7 +254,7 @@ const DuelDetailPage = () => {
         supabase.removeChannel(duelChannel);
       };
     }
-  }, [id, user]);
+  }, [id, user, forceReload]);
 
   const isChallenger = user && duel?.challenger_id === user.id;
   const isOpponent = user && duel?.opponent_id === user.id;
@@ -484,7 +502,7 @@ const DuelDetailPage = () => {
                       isChallenger={isChallenger}
                       isOpponent={isOpponent}
                       opponentId={duel.opponent_id}
-                      onStatusUpdate={fetchDuel}
+                      onStatusUpdate={handleStatusUpdate}
                     />
                   )}
                 </div>

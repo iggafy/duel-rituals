@@ -8,13 +8,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Bell,
-  Home,
   LogOut,
   Menu,
   Shield,
   Swords,
   Trophy,
   User,
+  Users,
   X,
 } from 'lucide-react';
 import {
@@ -61,16 +61,17 @@ const NavigationBar = () => {
       
       setPendingDuels(data || []);
       setHasNotifications(data && data.length > 0);
+      console.log('Pending duels fetched:', data);
     } catch (err) {
       console.error('Error fetching pending duels:', err);
     }
   };
   
   useEffect(() => {
-    fetchPendingDuels();
-    
-    // Set up subscription for real-time updates on duels
     if (user) {
+      fetchPendingDuels();
+      
+      // Set up subscription for real-time updates on duels
       const pendingDuelsChannel = supabase
         .channel('pending-duels')
         .on('postgres_changes', {
@@ -79,6 +80,7 @@ const NavigationBar = () => {
           table: 'duels',
           filter: `opponent_id=eq.${user.id}`
         }, () => {
+          console.log('Duels table changed, refreshing pending duels');
           fetchPendingDuels();
         })
         .subscribe();
@@ -92,7 +94,6 @@ const NavigationBar = () => {
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
   const navItems = [
-    { path: '/', label: 'Home', icon: <Home className="h-4 w-4 mr-2" /> },
     { path: '/duels', label: 'Duels', icon: <Swords className="h-4 w-4 mr-2" /> },
     { path: '/leaderboard', label: 'Leaderboard', icon: <Trophy className="h-4 w-4 mr-2" /> },
   ];
@@ -156,7 +157,7 @@ const NavigationBar = () => {
         <div className="flex items-center">
           <NavLink to="/" className="flex items-center mr-6">
             <Shield className="h-8 w-8 text-duel-gold mr-2" />
-            <span className="text-2xl font-bold tracking-tight">Duels</span>
+            <span className="text-2xl font-bold tracking-tight">DuelOn</span>
           </NavLink>
 
           {!isMobile && (

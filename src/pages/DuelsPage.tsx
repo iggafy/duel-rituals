@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import NavigationBar from '@/components/NavigationBar';
 import Footer from '@/components/Footer';
@@ -7,36 +7,242 @@ import DuelCard from '@/components/DuelCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { getActiveAndUpcomingDuels, getCompletedDuels } from '@/data/mockData';
-import { Search, LogIn } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Search, LogIn, AlertCircle } from 'lucide-react';
 import { useAuthGuard } from '@/hooks/use-auth-guard';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { toast } from '@/hooks/use-toast';
+
+interface DuelData {
+  id: string;
+  title: string;
+  reason: string;
+  stakes: string;
+  status: 'pending' | 'active' | 'completed' | 'declined';
+  type: 'intellectual' | 'strategic' | 'physical';
+  duration: number;
+  challenger_id: string;
+  challenger: {
+    username: string;
+    avatar_url: string | null;
+  };
+  opponent_id: string | null;
+  opponent: {
+    username: string;
+    avatar_url: string | null;
+  } | null;
+  winner_id: string | null;
+  start_time: string | null;
+  created_at: string;
+  spectator_count: number;
+}
 
 const DuelsPage = () => {
-  const { isAuthenticated, isLoading } = useAuthGuard();
+  const { isAuthenticated, isLoading: authLoading } = useAuthGuard();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const activeDuels = getActiveAndUpcomingDuels();
-  const completedDuels = getCompletedDuels();
+  const [activeDuels, setActiveDuels] = useState<DuelData[]>([]);
+  const [completedDuels, setCompletedDuels] = useState<DuelData[]>([]);
+  const [myDuels, setMyDuels] = useState<DuelData[]>([]);
   const [isInfoOpen, setIsInfoOpen] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Filter duels based on search term
   const filteredActiveDuels = activeDuels.filter(duel => 
     duel.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    duel.challenger.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (duel.opponent && duel.opponent.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    duel.reason.toLowerCase().includes(searchTerm.toLowerCase())
+    duel.challenger?.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (duel.opponent?.username && duel.opponent.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    duel.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    duel.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    duel.status.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
   const filteredCompletedDuels = completedDuels.filter(duel => 
     duel.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    duel.challenger.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (duel.opponent && duel.opponent.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    duel.reason.toLowerCase().includes(searchTerm.toLowerCase())
+    duel.challenger?.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (duel.opponent?.username && duel.opponent.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    duel.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    duel.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    duel.status.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const filteredMyDuels = myDuels.filter(duel => 
+    duel.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    duel.challenger?.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (duel.opponent?.username && duel.opponent.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    duel.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    duel.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    duel.status.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const fetchDuels = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Fetch active and pending duels (not involving the current user)
+      const { data: activeData, error: activeError } = await supabase
+        .from('duels')
+        .select(`
+          id,
+          title,
+          reason, 
+          stakes,
+          status,
+          type,
+          duration,
+          challenger_id,
+          challenger:challenger_id(username, avatar_url),
+          opponent_id,
+          opponent:opponent_id(username, avatar_url),
+          winner_id,
+          start_time,
+          created_at
+        `)
+        .in('status', ['active', 'pending'])
+        .not('challenger_id', 'eq', user.id)
+        .not('opponent_id', 'eq', user.id);
+      
+      if (activeError) throw activeError;
+      
+      // Count spectators for each duel
+      const activeDuelsWithSpectators = await Promise.all((activeData || []).map(async (duel) => {
+        const { count } = await supabase
+          .from('duel_spectators')
+          .select('*', { count: 'exact', head: true })
+          .eq('duel_id', duel.id);
+          
+        return {
+          ...duel,
+          spectator_count: count || 0
+        };
+      }));
+      
+      setActiveDuels(activeDuelsWithSpectators as DuelData[]);
+      
+      // Fetch completed duels (not involving the current user)
+      const { data: completedData, error: completedError } = await supabase
+        .from('duels')
+        .select(`
+          id,
+          title,
+          reason, 
+          stakes,
+          status,
+          type,
+          duration,
+          challenger_id,
+          challenger:challenger_id(username, avatar_url),
+          opponent_id,
+          opponent:opponent_id(username, avatar_url),
+          winner_id,
+          start_time,
+          created_at
+        `)
+        .in('status', ['completed', 'declined'])
+        .not('challenger_id', 'eq', user.id)
+        .not('opponent_id', 'eq', user.id)
+        .order('created_at', { ascending: false })
+        .limit(9);
+      
+      if (completedError) throw completedError;
+      
+      // Count spectators for each completed duel
+      const completedDuelsWithSpectators = await Promise.all((completedData || []).map(async (duel) => {
+        const { count } = await supabase
+          .from('duel_spectators')
+          .select('*', { count: 'exact', head: true })
+          .eq('duel_id', duel.id);
+          
+        return {
+          ...duel,
+          spectator_count: count || 0
+        };
+      }));
+      
+      setCompletedDuels(completedDuelsWithSpectators as DuelData[]);
+      
+      // Fetch duels where the current user is involved
+      const { data: myDuelsData, error: myDuelsError } = await supabase
+        .from('duels')
+        .select(`
+          id,
+          title,
+          reason, 
+          stakes,
+          status,
+          type,
+          duration,
+          challenger_id,
+          challenger:challenger_id(username, avatar_url),
+          opponent_id,
+          opponent:opponent_id(username, avatar_url),
+          winner_id,
+          start_time,
+          created_at
+        `)
+        .or(`challenger_id.eq.${user.id},opponent_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+      
+      if (myDuelsError) throw myDuelsError;
+      
+      // Count spectators for each of my duels
+      const myDuelsWithSpectators = await Promise.all((myDuelsData || []).map(async (duel) => {
+        const { count } = await supabase
+          .from('duel_spectators')
+          .select('*', { count: 'exact', head: true })
+          .eq('duel_id', duel.id);
+          
+        return {
+          ...duel,
+          spectator_count: count || 0
+        };
+      }));
+      
+      setMyDuels(myDuelsWithSpectators as DuelData[]);
+      
+    } catch (err: any) {
+      console.error('Error fetching duels:', err);
+      setError(err.message || 'Failed to load duels');
+      toast({
+        title: "Error Loading Duels",
+        description: "There was a problem loading the duels. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      fetchDuels();
+      
+      // Set up real-time subscription for duels
+      const duelsChannel = supabase
+        .channel('public:duels')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'duels'
+        }, () => {
+          fetchDuels();
+        })
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(duelsChannel);
+      };
+    }
+  }, [isAuthenticated, user]);
+
   // If loading, show a loading state
-  if (isLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <NavigationBar />
@@ -96,6 +302,16 @@ const DuelsPage = () => {
             </Button>
           </div>
           
+          {error && (
+            <div className="bg-red-950/50 border border-red-500/50 p-4 rounded-md mb-6 flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+              <p className="text-red-200">{error}</p>
+              <Button variant="ghost" size="sm" className="ml-auto" onClick={fetchDuels}>
+                Retry
+              </Button>
+            </div>
+          )}
+          
           <Collapsible open={isInfoOpen} onOpenChange={setIsInfoOpen} className="mb-6">
             <div className="bg-card/40 border border-duel-gold/20 rounded-lg p-4">
               <div className="flex justify-between items-center">
@@ -112,6 +328,7 @@ const DuelsPage = () => {
                   <li>Click on a duel card to see details and participate</li>
                   <li>Use the filter badges to quickly find duels by type or status</li>
                   <li>Switch between tabs to see active/upcoming or completed duels</li>
+                  <li>Check "My Duels" to see all duels you're participating in</li>
                 </ul>
               </CollapsibleContent>
             </div>
@@ -168,14 +385,66 @@ const DuelsPage = () => {
             )}
           </div>
           
-          <Tabs defaultValue="active" className="w-full">
+          <Tabs defaultValue="my-duels" className="w-full">
             <TabsList className="mb-6">
+              <TabsTrigger value="my-duels">My Duels</TabsTrigger>
               <TabsTrigger value="active">Active & Upcoming</TabsTrigger>
               <TabsTrigger value="completed">Completed</TabsTrigger>
             </TabsList>
             
+            <TabsContent value="my-duels">
+              {isLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin h-8 w-8 border-4 border-t-duel-gold border-duel-dark rounded-full mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading your duels...</p>
+                </div>
+              ) : filteredMyDuels.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredMyDuels.map(duel => (
+                    <DuelCard 
+                      key={duel.id}
+                      id={duel.id}
+                      title={duel.title}
+                      challenger={{ 
+                        name: duel.challenger?.username || 'Unknown challenger', 
+                        avatar: duel.challenger?.avatar_url || undefined 
+                      }}
+                      challengerId={duel.challenger_id}
+                      opponent={duel.opponent ? { 
+                        name: duel.opponent?.username || 'Unknown opponent', 
+                        avatar: duel.opponent?.avatar_url || undefined 
+                      } : undefined}
+                      opponentId={duel.opponent_id}
+                      reason={duel.reason}
+                      type={duel.type}
+                      status={duel.status}
+                      stakes={duel.stakes}
+                      spectatorCount={duel.spectator_count}
+                      startTime={duel.start_time}
+                      createdAt={duel.created_at}
+                      duration={duel.duration}
+                      winner={duel.winner_id}
+                      highlight={duel.status === 'pending' && duel.opponent_id === user.id}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <p className="mb-6">You haven't participated in any duels yet.</p>
+                  <Button asChild className="bg-duel hover:bg-duel-light">
+                    <Link to="/create-duel">Create Your First Duel</Link>
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+            
             <TabsContent value="active">
-              {filteredActiveDuels.length > 0 ? (
+              {isLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin h-8 w-8 border-4 border-t-duel-gold border-duel-dark rounded-full mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading active duels...</p>
+                </div>
+              ) : filteredActiveDuels.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredActiveDuels.map(duel => (
                     <DuelCard 
@@ -183,24 +452,24 @@ const DuelsPage = () => {
                       id={duel.id}
                       title={duel.title}
                       challenger={{ 
-                        name: duel.challenger, 
-                        avatar: duel.challengerAvatar 
+                        name: duel.challenger?.username || 'Unknown challenger', 
+                        avatar: duel.challenger?.avatar_url || undefined 
                       }}
-                      challengerId={duel.challengerId}
+                      challengerId={duel.challenger_id}
                       opponent={duel.opponent ? { 
-                        name: duel.opponent, 
-                        avatar: duel.opponentAvatar 
+                        name: duel.opponent?.username || 'Unknown opponent', 
+                        avatar: duel.opponent?.avatar_url || undefined 
                       } : undefined}
-                      opponentId={duel.opponentId}
+                      opponentId={duel.opponent_id}
                       reason={duel.reason}
-                      type={duel.type as "intellectual" | "strategic" | "physical"}
-                      status={duel.status as "active" | "pending" | "completed" | "declined"}
+                      type={duel.type}
+                      status={duel.status}
                       stakes={duel.stakes}
-                      spectatorCount={duel.spectatorCount}
-                      startTime={duel.startTime}
-                      createdAt={duel.createdAt}
+                      spectatorCount={duel.spectator_count}
+                      startTime={duel.start_time}
+                      createdAt={duel.created_at}
                       duration={duel.duration}
-                      winner={duel.winner}
+                      winner={duel.winner_id}
                     />
                   ))}
                 </div>
@@ -212,7 +481,12 @@ const DuelsPage = () => {
             </TabsContent>
             
             <TabsContent value="completed">
-              {filteredCompletedDuels.length > 0 ? (
+              {isLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin h-8 w-8 border-4 border-t-duel-gold border-duel-dark rounded-full mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading completed duels...</p>
+                </div>
+              ) : filteredCompletedDuels.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredCompletedDuels.map(duel => (
                     <DuelCard 
@@ -220,24 +494,24 @@ const DuelsPage = () => {
                       id={duel.id}
                       title={duel.title}
                       challenger={{ 
-                        name: duel.challenger, 
-                        avatar: duel.challengerAvatar 
+                        name: duel.challenger?.username || 'Unknown challenger', 
+                        avatar: duel.challenger?.avatar_url || undefined 
                       }}
-                      challengerId={duel.challengerId}
+                      challengerId={duel.challenger_id}
                       opponent={duel.opponent ? { 
-                        name: duel.opponent, 
-                        avatar: duel.opponentAvatar 
+                        name: duel.opponent?.username || 'Unknown opponent', 
+                        avatar: duel.opponent?.avatar_url || undefined 
                       } : undefined}
-                      opponentId={duel.opponentId}
+                      opponentId={duel.opponent_id}
                       reason={duel.reason}
-                      type={duel.type as "intellectual" | "strategic" | "physical"}
-                      status={duel.status as "active" | "pending" | "completed" | "declined"}
+                      type={duel.type}
+                      status={duel.status}
                       stakes={duel.stakes}
-                      spectatorCount={duel.spectatorCount}
-                      startTime={duel.startTime}
-                      createdAt={duel.createdAt}
+                      spectatorCount={duel.spectator_count}
+                      startTime={duel.start_time}
+                      createdAt={duel.created_at}
                       duration={duel.duration}
-                      winner={duel.winner}
+                      winner={duel.winner_id}
                     />
                   ))}
                 </div>
