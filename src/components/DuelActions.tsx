@@ -8,7 +8,6 @@ import {
   X, 
   Flag,
   AlertTriangle,
-  Share,
   Trophy
 } from 'lucide-react';
 import {
@@ -22,7 +21,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import ShareDuelInvite from './ShareDuelInvite';
 
 interface DuelActionsProps {
   duelId: string;
@@ -65,7 +63,13 @@ const DuelActions = ({
         variant: "success",
       });
       
-      onStatusUpdate();
+      // Force a full data reload after status update
+      setTimeout(() => {
+        onStatusUpdate();
+        // Reload the page to ensure all components update properly
+        window.location.reload();
+      }, 1000);
+      
     } catch (err) {
       console.error('Error accepting duel:', err);
       toast({

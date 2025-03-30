@@ -103,7 +103,7 @@ export function toUnifiedProfile(source: Profile | MockUser): UnifiedProfile {
       reputation: profile.reputation || 0,
       winsCount: profile.duels_won || 0,
       lossesCount: profile.duels_lost || 0,
-      totalDuels: (profile.duels_won || 0) + (profile.duels_lost || 0),
+      totalDuels: profile.duels_participated || (profile.duels_won || 0) + (profile.duels_lost || 0),
       bio: profile.bio,
       created_at: profile.created_at,
       updated_at: profile.updated_at

@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import { MessageSquare, AlertCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -35,6 +36,8 @@ const DuelComments: React.FC<DuelCommentsProps> = ({ duelId }) => {
       setIsLoading(true);
       setError(null);
 
+      console.log("Fetching comments for duel:", duelId);
+
       // Fetch comments with profiles via join
       const { data: commentData, error: commentError } = await supabase
         .from('duel_comments')
@@ -48,7 +51,12 @@ const DuelComments: React.FC<DuelCommentsProps> = ({ duelId }) => {
         .eq('duel_id', duelId)
         .order('created_at', { ascending: false });
 
-      if (commentError) throw commentError;
+      if (commentError) {
+        console.error("Error fetching comments:", commentError);
+        throw commentError;
+      }
+
+      console.log("Fetched comment data:", commentData);
 
       // Format comments with user profile data
       const formattedComments = commentData.map((comment: any) => ({
@@ -56,7 +64,7 @@ const DuelComments: React.FC<DuelCommentsProps> = ({ duelId }) => {
         content: comment.content,
         created_at: comment.created_at,
         user_id: comment.user_id,
-        user: comment.profiles
+        user: comment.profiles as Profile
       }));
 
       setComments(formattedComments);
@@ -74,6 +82,8 @@ const DuelComments: React.FC<DuelCommentsProps> = ({ duelId }) => {
     try {
       setIsSending(true);
 
+      console.log("Posting comment for duel:", duelId);
+
       const { data, error: insertError } = await supabase
         .from('duel_comments')
         .insert({
@@ -84,7 +94,12 @@ const DuelComments: React.FC<DuelCommentsProps> = ({ duelId }) => {
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error("Error posting comment:", insertError);
+        throw insertError;
+      }
+
+      console.log("Comment posted successfully:", data);
 
       // Add new comment to the list with the current user's profile
       const newComment: Comment = {
@@ -92,7 +107,7 @@ const DuelComments: React.FC<DuelCommentsProps> = ({ duelId }) => {
         content: data.content,
         created_at: data.created_at,
         user_id: data.user_id,
-        user: profile
+        user: profile as unknown as Profile
       };
 
       setComments([newComment, ...comments]);
@@ -124,6 +139,28 @@ const DuelComments: React.FC<DuelCommentsProps> = ({ duelId }) => {
 
   useEffect(() => {
     fetchComments();
+    
+    // Set up subscription for real-time comment updates
+    const commentsChannel = supabase
+      .channel(`comments-${duelId}`)
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'duel_comments',
+        filter: `duel_id=eq.${duelId}`
+      }, (payload) => {
+        console.log('New comment received:', payload);
+        // Only refetch if the comment wasn't posted by the current user
+        // (since we already added it to the UI)
+        if (user && payload.new.user_id !== user.id) {
+          fetchComments();
+        }
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(commentsChannel);
+    };
   }, [duelId]);
 
   return (

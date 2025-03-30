@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import NavigationBar from '@/components/NavigationBar';
 import Footer from '@/components/Footer';
 import DuelTimer from '@/components/DuelTimer';
@@ -13,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { toast } from '@/hooks/use-toast';
 import { 
   Shield, 
   Sword, 
@@ -22,7 +24,8 @@ import {
   AlertCircle,
   Users,
   Brain,
-  FireExtinguisher
+  FireExtinguisher,
+  RefreshCw
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -51,12 +54,14 @@ interface Duel {
 
 const DuelDetailPage = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [duel, setDuel] = useState<Duel | null>(null);
   const [challenger, setChallenger] = useState<Profile | null>(null);
   const [opponent, setOpponent] = useState<Profile | null>(null);
   const [winner, setWinner] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [spectatorCount, setSpectatorCount] = useState(0);
   const [isSpectating, setIsSpectating] = useState(false);
@@ -68,26 +73,42 @@ const DuelDetailPage = () => {
       setIsLoading(true);
       setError(null);
 
+      console.log("Fetching duel with ID:", id);
+      
       const { data, error } = await supabase
         .from('duels')
         .select('*')
         .eq('id', id)
         .single();
 
-      if (error) throw error;
-      if (!data) throw new Error('Duel not found');
+      if (error) {
+        console.error("Supabase error fetching duel:", error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.error("No duel found with ID:", id);
+        throw new Error('Duel not found');
+      }
 
+      console.log("Fetched duel data:", data);
       setDuel(data as Duel);
 
+      // Fetch challenger profile
       const { data: challengerData, error: challengerError } = await supabase
         .from('profiles')
         .select('id, username, avatar_url')
         .eq('id', data.challenger_id)
         .single();
 
-      if (challengerError) console.error('Error fetching challenger:', challengerError);
-      else setChallenger(challengerData as Profile);
+      if (challengerError) {
+        console.error('Error fetching challenger:', challengerError);
+      } else {
+        console.log("Fetched challenger data:", challengerData);
+        setChallenger(challengerData as Profile);
+      }
 
+      // Fetch opponent profile if exists
       if (data.opponent_id) {
         const { data: opponentData, error: opponentError } = await supabase
           .from('profiles')
@@ -95,10 +116,17 @@ const DuelDetailPage = () => {
           .eq('id', data.opponent_id)
           .single();
 
-        if (opponentError) console.error('Error fetching opponent:', opponentError);
-        else setOpponent(opponentData as Profile);
+        if (opponentError) {
+          console.error('Error fetching opponent:', opponentError);
+        } else {
+          console.log("Fetched opponent data:", opponentData);
+          setOpponent(opponentData as Profile);
+        }
+      } else {
+        setOpponent(null);
       }
 
+      // Fetch winner profile if exists
       if (data.winner_id) {
         const { data: winnerData, error: winnerError } = await supabase
           .from('profiles')
@@ -106,10 +134,17 @@ const DuelDetailPage = () => {
           .eq('id', data.winner_id)
           .single();
 
-        if (winnerError) console.error('Error fetching winner:', winnerError);
-        else setWinner(winnerData as Profile);
+        if (winnerError) {
+          console.error('Error fetching winner:', winnerError);
+        } else {
+          console.log("Fetched winner data:", winnerData);
+          setWinner(winnerData as Profile);
+        }
+      } else {
+        setWinner(null);
       }
 
+      // Count spectators
       const { count, error: spectatorError } = await supabase
         .from('duel_spectators')
         .select('id', { count: 'exact' })
@@ -119,6 +154,7 @@ const DuelDetailPage = () => {
         setSpectatorCount(count);
       }
 
+      // Check if current user is spectating
       if (user) {
         const { data: spectatorData, error: userSpectatorError } = await supabase
           .from('duel_spectators')
@@ -128,37 +164,78 @@ const DuelDetailPage = () => {
 
         if (!userSpectatorError && spectatorData && spectatorData.length > 0) {
           setIsSpectating(true);
+        } else {
+          setIsSpectating(false);
         }
       }
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching duel details:', err);
-      setError('Failed to load duel details');
+      setError(err.message || 'Failed to load duel details');
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchDuel();
   };
 
   const handleSpectate = async () => {
     if (!user || !duel || isSpectating) return;
 
     try {
-      await supabase
+      const { error } = await supabase
         .from('duel_spectators')
         .insert({
           duel_id: duel.id,
           user_id: user.id
         });
+        
+      if (error) throw error;
 
       setIsSpectating(true);
       setSpectatorCount(prev => prev + 1);
+      
+      toast({
+        title: "Now Spectating",
+        description: "You are now spectating this duel.",
+        variant: "default",
+      });
     } catch (err) {
       console.error('Error adding spectator:', err);
+      toast({
+        title: "Error",
+        description: "Could not add you as a spectator. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
   useEffect(() => {
     fetchDuel();
+    
+    // Set up a subscription to duel updates
+    if (id) {
+      const duelChannel = supabase
+        .channel(`duel-${id}`)
+        .on('postgres_changes', { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'duels',
+          filter: `id=eq.${id}`
+        }, (payload) => {
+          console.log('Duel updated:', payload);
+          fetchDuel();
+        })
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(duelChannel);
+      };
+    }
   }, [id, user]);
 
   const isChallenger = user && duel?.challenger_id === user.id;
@@ -246,7 +323,19 @@ const DuelDetailPage = () => {
           <div className="mb-6">
             <div className="flex justify-between items-start mb-2">
               <h1 className="text-3xl font-bold text-duel-gold">{duel.title}</h1>
-              <ShareDuelInvite duelId={duel.id} duelTitle={duel.title} />
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-duel-gold/40 text-duel-gold hover:bg-duel-gold/10"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+                <ShareDuelInvite duelId={duel.id} duelTitle={duel.title} />
+              </div>
             </div>
             <div className="flex flex-wrap gap-2 mb-4">
               <Badge className={cn("transition-colors", getTypeClass(duel.type))}>
