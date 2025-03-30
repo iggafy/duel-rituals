@@ -3,18 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
-
-export type Profile = {
-  id: string;
-  username: string;
-  avatar_url: string | null;
-  reputation: number | null;
-  duels_won: number | null;
-  duels_lost: number | null;
-  duels_participated: number | null;
-  created_at: string;
-  updated_at: string;
-};
+import { Profile } from '@/types/database.types';
 
 type AuthContextType = {
   session: Session | null;
