@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import NavigationBar from '@/components/NavigationBar';
@@ -6,7 +7,7 @@ import DuelCard from '@/components/DuelCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, logSupabaseError } from '@/integrations/supabase/client';
 import { Search, LogIn, AlertCircle } from 'lucide-react';
 import { useAuthGuard } from '@/hooks/use-auth-guard';
 import { useAuth } from '@/contexts/AuthContext';
@@ -83,6 +84,7 @@ const DuelsPage = () => {
     setError(null);
     
     try {
+      // Fetch active duels (not including my duels)
       const { data: activeData, error: activeError } = await supabase
         .from('duels')
         .select(`
@@ -105,7 +107,10 @@ const DuelsPage = () => {
         .not('challenger_id', 'eq', user.id)
         .not('opponent_id', 'eq', user.id);
       
-      if (activeError) throw activeError;
+      if (activeError) {
+        logSupabaseError(activeError, 'fetching active duels');
+        throw activeError;
+      }
       
       const activeDuelsWithSpectators = await Promise.all((activeData || []).map(async (duel) => {
         const { count } = await supabase
@@ -121,6 +126,7 @@ const DuelsPage = () => {
       
       setActiveDuels(activeDuelsWithSpectators as DuelData[]);
       
+      // Fetch completed duels (not including my duels)
       const { data: completedData, error: completedError } = await supabase
         .from('duels')
         .select(`
@@ -145,7 +151,10 @@ const DuelsPage = () => {
         .order('created_at', { ascending: false })
         .limit(9);
       
-      if (completedError) throw completedError;
+      if (completedError) {
+        logSupabaseError(completedError, 'fetching completed duels');
+        throw completedError;
+      }
       
       const completedDuelsWithSpectators = await Promise.all((completedData || []).map(async (duel) => {
         const { count } = await supabase
@@ -161,6 +170,7 @@ const DuelsPage = () => {
       
       setCompletedDuels(completedDuelsWithSpectators as DuelData[]);
       
+      // Fetch my duels (including those I created or was invited to)
       const { data: myDuelsData, error: myDuelsError } = await supabase
         .from('duels')
         .select(`
@@ -182,7 +192,10 @@ const DuelsPage = () => {
         .or(`challenger_id.eq.${user.id},opponent_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
       
-      if (myDuelsError) throw myDuelsError;
+      if (myDuelsError) {
+        logSupabaseError(myDuelsError, 'fetching my duels');
+        throw myDuelsError;
+      }
       
       const myDuelsWithSpectators = await Promise.all((myDuelsData || []).map(async (duel) => {
         const { count } = await supabase
@@ -215,6 +228,7 @@ const DuelsPage = () => {
     if (isAuthenticated && user) {
       fetchDuels();
       
+      // Subscribe to realtime updates for duels table
       const duelsChannel = supabase
         .channel('public:duels')
         .on('postgres_changes', {
@@ -222,6 +236,7 @@ const DuelsPage = () => {
           schema: 'public',
           table: 'duels'
         }, () => {
+          console.log('Duels data changed, refreshing...');
           fetchDuels();
         })
         .subscribe();

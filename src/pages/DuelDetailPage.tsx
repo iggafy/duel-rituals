@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import NavigationBar from '@/components/NavigationBar';
@@ -9,7 +8,7 @@ import DuelComments from '@/components/DuelComments';
 import DuelVoting from '@/components/DuelVoting';
 import ShareDuelInvite from '@/components/ShareDuelInvite';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, logSupabaseError } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -25,7 +24,8 @@ import {
   Users,
   Brain,
   FireExtinguisher,
-  RefreshCw
+  RefreshCw,
+  CheckCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -56,7 +56,7 @@ const DuelDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const statusParam = searchParams.get('status');
+  const justAccepted = searchParams.get('accepted') === 'true';
   const { user } = useAuth();
   const [duel, setDuel] = useState<Duel | null>(null);
   const [challenger, setChallenger] = useState<Profile | null>(null);
@@ -68,6 +68,19 @@ const DuelDetailPage = () => {
   const [spectatorCount, setSpectatorCount] = useState(0);
   const [isSpectating, setIsSpectating] = useState(false);
   const [forceReload, setForceReload] = useState(0);
+  const [showAcceptanceNotice, setShowAcceptanceNotice] = useState(false);
+
+  useEffect(() => {
+    if (justAccepted) {
+      setShowAcceptanceNotice(true);
+      setTimeout(() => {
+        navigate(`/duels/${id}`, { replace: true });
+        setTimeout(() => {
+          setShowAcceptanceNotice(false);
+        }, 3000);
+      }, 100);
+    }
+  }, [justAccepted, id, navigate]);
 
   const fetchDuel = async () => {
     if (!id) return;
@@ -85,7 +98,7 @@ const DuelDetailPage = () => {
         .single();
 
       if (error) {
-        console.error("Supabase error fetching duel:", error);
+        logSupabaseError(error, 'fetching duel details');
         throw error;
       }
       
@@ -97,15 +110,6 @@ const DuelDetailPage = () => {
       console.log("Fetched duel data:", data);
       setDuel(data as Duel);
 
-      // If we just accepted the duel and the URL has a status parameter
-      // but the duel hasn't updated yet in the database, force the UI to show it as active
-      if (statusParam === 'active' && data.status === 'pending') {
-        console.log("Status override: forcing duel to display as active");
-        const updatedDuel = {...data, status: 'active'} as Duel;
-        setDuel(updatedDuel);
-      }
-
-      // Fetch challenger profile
       const { data: challengerData, error: challengerError } = await supabase
         .from('profiles')
         .select('id, username, avatar_url')
@@ -114,12 +118,12 @@ const DuelDetailPage = () => {
 
       if (challengerError) {
         console.error('Error fetching challenger:', challengerError);
+        logSupabaseError(challengerError, 'fetching challenger profile');
       } else {
         console.log("Fetched challenger data:", challengerData);
         setChallenger(challengerData as Profile);
       }
 
-      // Fetch opponent profile if exists
       if (data.opponent_id) {
         const { data: opponentData, error: opponentError } = await supabase
           .from('profiles')
@@ -129,6 +133,7 @@ const DuelDetailPage = () => {
 
         if (opponentError) {
           console.error('Error fetching opponent:', opponentError);
+          logSupabaseError(opponentError, 'fetching opponent profile');
         } else {
           console.log("Fetched opponent data:", opponentData);
           setOpponent(opponentData as Profile);
@@ -137,7 +142,6 @@ const DuelDetailPage = () => {
         setOpponent(null);
       }
 
-      // Fetch winner profile if exists
       if (data.winner_id) {
         const { data: winnerData, error: winnerError } = await supabase
           .from('profiles')
@@ -147,6 +151,7 @@ const DuelDetailPage = () => {
 
         if (winnerError) {
           console.error('Error fetching winner:', winnerError);
+          logSupabaseError(winnerError, 'fetching winner profile');
         } else {
           console.log("Fetched winner data:", winnerData);
           setWinner(winnerData as Profile);
@@ -155,7 +160,6 @@ const DuelDetailPage = () => {
         setWinner(null);
       }
 
-      // Count spectators
       const { count, error: spectatorError } = await supabase
         .from('duel_spectators')
         .select('id', { count: 'exact' })
@@ -165,7 +169,6 @@ const DuelDetailPage = () => {
         setSpectatorCount(count);
       }
 
-      // Check if current user is spectating
       if (user) {
         const { data: spectatorData, error: userSpectatorError } = await supabase
           .from('duel_spectators')
@@ -234,7 +237,6 @@ const DuelDetailPage = () => {
   useEffect(() => {
     fetchDuel();
     
-    // Set up a subscription to duel updates
     if (id) {
       console.log(`Setting up realtime subscription for duel ${id}`);
       const duelChannel = supabase
@@ -337,6 +339,13 @@ const DuelDetailPage = () => {
       <NavigationBar />
       
       <main className="flex-1 container py-8">
+        {showAcceptanceNotice && (
+          <div className="bg-green-950/50 border border-green-500/50 p-4 rounded-md mb-6 flex items-center">
+            <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+            <p className="text-green-200">Duel accepted! The battle has begun. Good luck, duelist!</p>
+          </div>
+        )}
+
         <div className="max-w-4xl mx-auto">
           <div className="mb-6">
             <div className="flex justify-between items-start mb-2">

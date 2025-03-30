@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 import { 
   Check, 
   X, 
@@ -40,6 +40,7 @@ const DuelActions = ({
   onStatusUpdate
 }: DuelActionsProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleAcceptDuel = async () => {
     if (!isOpponent || duelStatus !== 'pending') return;
@@ -71,11 +72,8 @@ const DuelActions = ({
       // Trigger data reload
       onStatusUpdate();
       
-      // Use window.location.reload() instead of redirecting to the same page with a status query parameter
-      // This ensures the page fully refreshes and gets the latest state
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
+      // Navigate directly to the duel page with a fresh state
+      navigate(`/duels/${duelId}?accepted=true`, { replace: true });
       
     } catch (err) {
       console.error('Error accepting duel:', err);
@@ -113,10 +111,8 @@ const DuelActions = ({
       
       onStatusUpdate();
       
-      // Redirect to duels list
-      setTimeout(() => {
-        window.location.href = '/duels';
-      }, 1000);
+      // Navigate to duels list
+      navigate('/duels', { replace: true });
     } catch (err) {
       console.error('Error declining duel:', err);
       toast({

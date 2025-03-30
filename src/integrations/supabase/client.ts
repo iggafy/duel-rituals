@@ -21,7 +21,8 @@ export const supabase = createClient<Database>(
     },
     auth: {
       persistSession: true,
-      autoRefreshToken: true
+      autoRefreshToken: true,
+      detectSessionInUrl: false // Prevent URL hash parsing to avoid navigation issues
     }
   }
 );
