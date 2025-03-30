@@ -52,7 +52,7 @@ export const setupRealtimeSubscription = (
 ) => {
   console.log(`Setting up realtime subscription for ${tableName}, event: ${eventType}`);
   
-  // Fix the channel creation to use the proper event structure
+  // Create a channel with the correct event type configuration
   const channel = supabase
     .channel(`public:${tableName}`)
     .on(
@@ -61,13 +61,15 @@ export const setupRealtimeSubscription = (
         event: eventType,
         schema: 'public',
         table: tableName
-      },
+      } as any, // Type assertion to resolve TypeScript error
       (payload) => {
         console.log(`Realtime update received for ${tableName}:`, payload);
         callback();
       }
     )
-    .subscribe();
+    .subscribe((status) => {
+      console.log(`Realtime subscription status for ${tableName}:`, status);
+    });
   
   return () => {
     console.log(`Removing realtime subscription for ${tableName}`);

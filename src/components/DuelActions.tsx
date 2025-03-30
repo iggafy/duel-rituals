@@ -50,37 +50,38 @@ const DuelActions = ({
     try {
       console.log('Accepting duel with ID:', duelId);
       const now = new Date().toISOString();
-      const { error } = await supabase
+      
+      // First, let's log what we're about to do
+      console.log('Updating duel status to active with start time:', now);
+      
+      const { data, error } = await supabase
         .from('duels')
         .update({
           status: 'active',
           start_time: now
         })
-        .eq('id', duelId);
+        .eq('id', duelId)
+        .select();
       
       if (error) {
         console.error('Supabase error when accepting duel:', error);
         throw error;
       }
       
-      console.log('Duel accepted successfully');
+      console.log('Duel accepted successfully, received data:', data);
+      
       toast({
         title: "Duel Accepted!",
         description: "The duel has begun. May the best duelist win!",
         variant: "success",
       });
       
-      // Trigger data reload and replace the current URL with the duel page
-      // This fixes the loop issue by avoiding the redirect parameter
+      // Trigger the parent component's update function
       onStatusUpdate();
       
-      // Force reload the page to ensure fresh data without query parameters
-      // This ensures we get a clean state for the duel
+      // Navigate to the duel page directly without any query parameters
+      // This ensures we get a fresh state without any redirect loops
       navigate(`/duels/${duelId}`, { replace: true });
-      setTimeout(() => {
-        window.location.reload();
-      }, 300);
-      
     } catch (err) {
       console.error('Error accepting duel:', err);
       toast({

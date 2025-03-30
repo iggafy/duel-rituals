@@ -60,3 +60,30 @@ export const getDuelParticipantDisplay = (
     winner: winnerId
   };
 };
+
+/**
+ * Helper function to check if a duel status is valid 
+ * and different from the current status
+ */
+export const isDuelStatusChanged = (
+  oldStatus: string | null | undefined,
+  newStatus: string | null | undefined
+): boolean => {
+  if (!oldStatus || !newStatus) return false;
+  return oldStatus !== newStatus;
+};
+
+/**
+ * Helper function to format date strings consistently
+ */
+export const formatDuelDate = (dateString: string | null): string => {
+  if (!dateString) return 'Not set';
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+};
