@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,11 +70,16 @@ const DuelActions = ({
         variant: "success",
       });
       
-      // Trigger data reload
+      // Trigger data reload and replace the current URL with the duel page
+      // This fixes the loop issue by avoiding the redirect parameter
       onStatusUpdate();
       
-      // Navigate directly to the duel page with a fresh state
-      navigate(`/duels/${duelId}?accepted=true`, { replace: true });
+      // Force reload the page to ensure fresh data without query parameters
+      // This ensures we get a clean state for the duel
+      navigate(`/duels/${duelId}`, { replace: true });
+      setTimeout(() => {
+        window.location.reload();
+      }, 300);
       
     } catch (err) {
       console.error('Error accepting duel:', err);

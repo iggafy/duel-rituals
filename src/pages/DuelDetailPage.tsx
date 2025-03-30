@@ -110,78 +110,13 @@ const DuelDetailPage = () => {
       console.log("Fetched duel data:", data);
       setDuel(data as Duel);
 
-      const { data: challengerData, error: challengerError } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .eq('id', data.challenger_id)
-        .single();
-
-      if (challengerError) {
-        console.error('Error fetching challenger:', challengerError);
-        logSupabaseError(challengerError, 'fetching challenger profile');
-      } else {
-        console.log("Fetched challenger data:", challengerData);
-        setChallenger(challengerData as Profile);
-      }
-
-      if (data.opponent_id) {
-        const { data: opponentData, error: opponentError } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url')
-          .eq('id', data.opponent_id)
-          .single();
-
-        if (opponentError) {
-          console.error('Error fetching opponent:', opponentError);
-          logSupabaseError(opponentError, 'fetching opponent profile');
-        } else {
-          console.log("Fetched opponent data:", opponentData);
-          setOpponent(opponentData as Profile);
-        }
-      } else {
-        setOpponent(null);
-      }
-
-      if (data.winner_id) {
-        const { data: winnerData, error: winnerError } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url')
-          .eq('id', data.winner_id)
-          .single();
-
-        if (winnerError) {
-          console.error('Error fetching winner:', winnerError);
-          logSupabaseError(winnerError, 'fetching winner profile');
-        } else {
-          console.log("Fetched winner data:", winnerData);
-          setWinner(winnerData as Profile);
-        }
-      } else {
-        setWinner(null);
-      }
-
-      const { count, error: spectatorError } = await supabase
-        .from('duel_spectators')
-        .select('id', { count: 'exact' })
-        .eq('duel_id', id);
-
-      if (!spectatorError && count !== null) {
-        setSpectatorCount(count);
-      }
-
-      if (user) {
-        const { data: spectatorData, error: userSpectatorError } = await supabase
-          .from('duel_spectators')
-          .select('id')
-          .eq('duel_id', id)
-          .eq('user_id', user.id);
-
-        if (!userSpectatorError && spectatorData && spectatorData.length > 0) {
-          setIsSpectating(true);
-        } else {
-          setIsSpectating(false);
-        }
-      }
+      await Promise.all([
+        fetchChallengerProfile(data.challenger_id),
+        data.opponent_id ? fetchOpponentProfile(data.opponent_id) : Promise.resolve(),
+        data.winner_id ? fetchWinnerProfile(data.winner_id) : Promise.resolve(),
+        fetchSpectatorCount(data.id),
+        user ? checkUserIsSpectating(data.id, user.id) : Promise.resolve()
+      ]);
 
     } catch (err: any) {
       console.error('Error fetching duel details:', err);
@@ -192,10 +127,82 @@ const DuelDetailPage = () => {
     }
   };
 
+  const fetchChallengerProfile = async (challengerId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .eq('id', challengerId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching challenger:', error);
+      logSupabaseError(error, 'fetching challenger profile');
+    } else {
+      console.log("Fetched challenger data:", data);
+      setChallenger(data as Profile);
+    }
+  };
+
+  const fetchOpponentProfile = async (opponentId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .eq('id', opponentId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching opponent:', error);
+      logSupabaseError(error, 'fetching opponent profile');
+    } else {
+      console.log("Fetched opponent data:", data);
+      setOpponent(data as Profile);
+    }
+  };
+
+  const fetchWinnerProfile = async (winnerId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .eq('id', winnerId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching winner:', error);
+      logSupabaseError(error, 'fetching winner profile');
+    } else {
+      console.log("Fetched winner data:", data);
+      setWinner(data as Profile);
+    }
+  };
+
+  const fetchSpectatorCount = async (duelId: string) => {
+    const { count, error } = await supabase
+      .from('duel_spectators')
+      .select('id', { count: 'exact' })
+      .eq('duel_id', duelId);
+
+    if (!error && count !== null) {
+      setSpectatorCount(count);
+    }
+  };
+
+  const checkUserIsSpectating = async (duelId: string, userId: string) => {
+    const { data, error } = await supabase
+      .from('duel_spectators')
+      .select('id')
+      .eq('duel_id', duelId)
+      .eq('user_id', userId);
+
+    if (!error && data && data.length > 0) {
+      setIsSpectating(true);
+    } else {
+      setIsSpectating(false);
+    }
+  };
+
   const handleRefresh = () => {
     setIsRefreshing(true);
     setForceReload(prev => prev + 1);
-    fetchDuel();
   };
 
   const handleStatusUpdate = () => {
@@ -239,21 +246,32 @@ const DuelDetailPage = () => {
     
     if (id) {
       console.log(`Setting up realtime subscription for duel ${id}`);
-      const duelChannel = supabase
-        .channel(`duel-${id}`)
-        .on('postgres_changes', { 
-          event: 'UPDATE', 
-          schema: 'public', 
-          table: 'duels',
-          filter: `id=eq.${id}`
-        }, (payload) => {
-          console.log('Duel updated:', payload);
-          fetchDuel();
-        })
-        .subscribe();
-        
+      
+      const duelCleanup = setupRealtimeSubscription('duels', () => {
+        console.log('Duel updated, refreshing data');
+        fetchDuel();
+      });
+      
+      const commentsCleanup = setupRealtimeSubscription('duel_comments', () => {
+        console.log('Duel comments updated');
+      });
+      
+      const votesCleanup = setupRealtimeSubscription('duel_votes', () => {
+        console.log('Duel votes updated');
+      });
+      
+      const spectatorsCleanup = setupRealtimeSubscription('duel_spectators', () => {
+        console.log('Duel spectators updated');
+        if (id) {
+          fetchSpectatorCount(id);
+        }
+      });
+      
       return () => {
-        supabase.removeChannel(duelChannel);
+        duelCleanup();
+        commentsCleanup();
+        votesCleanup();
+        spectatorsCleanup();
       };
     }
   }, [id, user, forceReload]);

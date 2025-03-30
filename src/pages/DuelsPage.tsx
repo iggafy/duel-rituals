@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import NavigationBar from '@/components/NavigationBar';
@@ -112,6 +111,7 @@ const DuelsPage = () => {
         throw activeError;
       }
       
+      // Add spectator count to each duel
       const activeDuelsWithSpectators = await Promise.all((activeData || []).map(async (duel) => {
         const { count } = await supabase
           .from('duel_spectators')
@@ -228,21 +228,13 @@ const DuelsPage = () => {
     if (isAuthenticated && user) {
       fetchDuels();
       
-      // Subscribe to realtime updates for duels table
-      const duelsChannel = supabase
-        .channel('public:duels')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'duels'
-        }, () => {
-          console.log('Duels data changed, refreshing...');
-          fetchDuels();
-        })
-        .subscribe();
+      // Use our new helper function for realtime subscriptions
+      const duelsCleanup = setupRealtimeSubscription('duels', fetchDuels);
+      const spectatorsCleanup = setupRealtimeSubscription('duel_spectators', fetchDuels);
         
       return () => {
-        supabase.removeChannel(duelsChannel);
+        duelsCleanup();
+        spectatorsCleanup();
       };
     }
   }, [isAuthenticated, user]);
