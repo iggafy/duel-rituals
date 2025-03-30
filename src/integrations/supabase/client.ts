@@ -15,6 +15,25 @@ export const supabase = createClient<Database>(
       params: {
         eventsPerSecond: 10
       }
+    },
+    db: {
+      schema: 'public'
+    },
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true
     }
   }
 );
+
+// Export a helper function to log errors in a structured way
+export const logSupabaseError = (error: any, context: string) => {
+  console.error(`Supabase error in ${context}:`, error);
+  if (error?.message) {
+    console.error('Message:', error.message);
+  }
+  if (error?.details) {
+    console.error('Details:', error.details);
+  }
+  return error;
+};

@@ -29,6 +29,7 @@ interface DuelCardProps {
   startTime?: string;
   createdAt?: string;
   winner?: string;
+  highlight?: boolean; // Added highlight prop
 }
 
 const DuelCard: React.FC<DuelCardProps> = ({
@@ -46,7 +47,8 @@ const DuelCard: React.FC<DuelCardProps> = ({
   spectatorCount,
   startTime,
   createdAt,
-  winner
+  winner,
+  highlight = false // Default to false
 }) => {
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -92,7 +94,10 @@ const DuelCard: React.FC<DuelCardProps> = ({
   };
 
   return (
-    <Card className="ritual-border overflow-hidden hover:bg-accent/5 transition-colors group">
+    <Card className={cn(
+      "ritual-border overflow-hidden hover:bg-accent/5 transition-colors group",
+      highlight && "border-amber-500/50 bg-amber-950/10"
+    )}>
       <Link to={`/duels/${id}`} className="block h-full">
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start mb-1">

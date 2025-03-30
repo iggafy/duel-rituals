@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import NavigationBar from '@/components/NavigationBar';
@@ -50,7 +49,6 @@ const DuelsPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Filter duels based on search term
   const filteredActiveDuels = activeDuels.filter(duel => 
     duel.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     duel.challenger?.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -85,7 +83,6 @@ const DuelsPage = () => {
     setError(null);
     
     try {
-      // Fetch active and pending duels (not involving the current user)
       const { data: activeData, error: activeError } = await supabase
         .from('duels')
         .select(`
@@ -97,9 +94,9 @@ const DuelsPage = () => {
           type,
           duration,
           challenger_id,
-          challenger:challenger_id(username, avatar_url),
+          challenger:profiles!duels_challenger_id_fkey(username, avatar_url),
           opponent_id,
-          opponent:opponent_id(username, avatar_url),
+          opponent:profiles!duels_opponent_id_fkey(username, avatar_url),
           winner_id,
           start_time,
           created_at
@@ -110,7 +107,6 @@ const DuelsPage = () => {
       
       if (activeError) throw activeError;
       
-      // Count spectators for each duel
       const activeDuelsWithSpectators = await Promise.all((activeData || []).map(async (duel) => {
         const { count } = await supabase
           .from('duel_spectators')
@@ -125,7 +121,6 @@ const DuelsPage = () => {
       
       setActiveDuels(activeDuelsWithSpectators as DuelData[]);
       
-      // Fetch completed duels (not involving the current user)
       const { data: completedData, error: completedError } = await supabase
         .from('duels')
         .select(`
@@ -137,9 +132,9 @@ const DuelsPage = () => {
           type,
           duration,
           challenger_id,
-          challenger:challenger_id(username, avatar_url),
+          challenger:profiles!duels_challenger_id_fkey(username, avatar_url),
           opponent_id,
-          opponent:opponent_id(username, avatar_url),
+          opponent:profiles!duels_opponent_id_fkey(username, avatar_url),
           winner_id,
           start_time,
           created_at
@@ -152,7 +147,6 @@ const DuelsPage = () => {
       
       if (completedError) throw completedError;
       
-      // Count spectators for each completed duel
       const completedDuelsWithSpectators = await Promise.all((completedData || []).map(async (duel) => {
         const { count } = await supabase
           .from('duel_spectators')
@@ -167,7 +161,6 @@ const DuelsPage = () => {
       
       setCompletedDuels(completedDuelsWithSpectators as DuelData[]);
       
-      // Fetch duels where the current user is involved
       const { data: myDuelsData, error: myDuelsError } = await supabase
         .from('duels')
         .select(`
@@ -179,9 +172,9 @@ const DuelsPage = () => {
           type,
           duration,
           challenger_id,
-          challenger:challenger_id(username, avatar_url),
+          challenger:profiles!duels_challenger_id_fkey(username, avatar_url),
           opponent_id,
-          opponent:opponent_id(username, avatar_url),
+          opponent:profiles!duels_opponent_id_fkey(username, avatar_url),
           winner_id,
           start_time,
           created_at
@@ -191,7 +184,6 @@ const DuelsPage = () => {
       
       if (myDuelsError) throw myDuelsError;
       
-      // Count spectators for each of my duels
       const myDuelsWithSpectators = await Promise.all((myDuelsData || []).map(async (duel) => {
         const { count } = await supabase
           .from('duel_spectators')
@@ -223,7 +215,6 @@ const DuelsPage = () => {
     if (isAuthenticated && user) {
       fetchDuels();
       
-      // Set up real-time subscription for duels
       const duelsChannel = supabase
         .channel('public:duels')
         .on('postgres_changes', {
@@ -241,7 +232,6 @@ const DuelsPage = () => {
     }
   }, [isAuthenticated, user]);
 
-  // If loading, show a loading state
   if (authLoading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -257,7 +247,6 @@ const DuelsPage = () => {
     );
   }
   
-  // If not authenticated, show auth required message
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -288,7 +277,6 @@ const DuelsPage = () => {
     );
   }
   
-  // Main content for authenticated users
   return (
     <div className="min-h-screen flex flex-col">
       <NavigationBar />

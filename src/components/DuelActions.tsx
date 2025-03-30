@@ -71,10 +71,11 @@ const DuelActions = ({
       // Trigger data reload
       onStatusUpdate();
       
-      // Delay before reloading to allow the state to update first
+      // Use window.location.reload() instead of redirecting to the same page with a status query parameter
+      // This ensures the page fully refreshes and gets the latest state
       setTimeout(() => {
-        window.location.href = `/duels/${duelId}?status=active`;
-      }, 1000);
+        window.location.reload();
+      }, 500);
       
     } catch (err) {
       console.error('Error accepting duel:', err);
