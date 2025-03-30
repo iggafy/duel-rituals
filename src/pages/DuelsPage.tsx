@@ -6,7 +6,7 @@ import DuelCard from '@/components/DuelCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { supabase, logSupabaseError } from '@/integrations/supabase/client';
+import { supabase, logSupabaseError, setupRealtimeSubscription } from '@/integrations/supabase/client';
 import { Search, LogIn, AlertCircle } from 'lucide-react';
 import { useAuthGuard } from '@/hooks/use-auth-guard';
 import { useAuth } from '@/contexts/AuthContext';

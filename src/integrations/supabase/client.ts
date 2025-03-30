@@ -51,11 +51,13 @@ export const setupRealtimeSubscription = (
   eventType: 'INSERT' | 'UPDATE' | 'DELETE' | '*' = '*'
 ) => {
   console.log(`Setting up realtime subscription for ${tableName}, event: ${eventType}`);
+  
+  // Fix the channel creation to use the proper event structure
   const channel = supabase
     .channel(`public:${tableName}`)
     .on(
-      'postgres_changes',
-      {
+      'postgres_changes', 
+      { 
         event: eventType,
         schema: 'public',
         table: tableName

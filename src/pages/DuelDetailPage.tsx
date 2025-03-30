@@ -8,7 +8,7 @@ import DuelComments from '@/components/DuelComments';
 import DuelVoting from '@/components/DuelVoting';
 import ShareDuelInvite from '@/components/ShareDuelInvite';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase, logSupabaseError } from '@/integrations/supabase/client';
+import { supabase, logSupabaseError, setupRealtimeSubscription } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
