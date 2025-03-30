@@ -30,12 +30,12 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { useMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const NavigationBar = () => {
   const { user, profile, signOut } = useAuth();
   const location = useLocation();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingDuels, setPendingDuels] = useState<any[]>([]);
   const [hasNotifications, setHasNotifications] = useState(false);
@@ -208,7 +208,7 @@ const NavigationBar = () => {
                   <Button variant="ghost" className="relative rounded-full h-8 w-8 p-0 flex justify-center">
                     <Avatar className="h-8 w-8 border border-duel-gold/40">
                       <AvatarImage
-                        src={profile?.avatarUrl || undefined}
+                        src={profile?.avatar_url || undefined}
                         alt={profile?.username || "User"}
                       />
                       <AvatarFallback className="bg-duel/50 text-white">
